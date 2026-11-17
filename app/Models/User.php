@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -18,21 +17,18 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    use HasApiTokens, HasFactory, Notifiable;
-
-    protected $table = 'Users';
-    protected $primaryKey = 'user_id';
-    public $timestamps = false;
-
     protected $fillable = [
         'first_name',
         'last_name',
         'email',
         'password',
-        'role',
-        'profile_picture',
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
     protected $hidden = [
         'password',
     ];
@@ -42,23 +38,5 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
         ];
-    }
-
-    public function admin()
-    {
-        return $this->hasOne(Admin::class, 'user_id', 'user_id');
-    }
-
-    public function employee()
-    {
-        return $this->hasOne(Employee::class, 'user_id', 'user_id');
-    public function employee(): HasOne
-    {
-        return $this->hasOne(Employee::class, 'user_id', 'user_id');
-    }
-
-    public function admin(): HasOne
-    {
-        return $this->hasOne(Admin::class, 'user_id', 'user_id');
     }
 }

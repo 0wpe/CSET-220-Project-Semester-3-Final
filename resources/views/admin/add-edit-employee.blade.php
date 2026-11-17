@@ -177,7 +177,26 @@
         </button>
     </div>
 
-    <form onsubmit="return saveEmployee(event)">
+    <form method="POST" action="{{ url('/admin/employees') }}">
+        @if(session('success'))
+    <p style="color: green;">
+        {{ session('success') }}
+    </p>
+@endif
+
+@if(session('temporaryPassword'))
+    <p style="color: green;">
+        Temporary Password: {{ session('temporaryPassword') }}
+    </p>
+@endif
+
+@if($errors->any())
+    <div style="color: red;">
+        @foreach($errors->all() as $error)
+            <p>{{ $error }}</p>
+        @endforeach
+    </div>
+@endif
 
         <section class="form-section">
 
@@ -185,7 +204,7 @@
 
             <div class="form-grid">
 
-                <div class="field full">
+                <div class="field">
                     <label for="employeeName">Employee name</label>
                     <input type="text" id="employeeName" value="Maya Thompson" required>
                 </div>
