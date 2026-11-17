@@ -3,22 +3,35 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Employee;
+use App\Models\Schedule;
 
 class AdminController extends Controller
 {
     public function dashboard()
     {
-        return view('admin.dashboard');
+        $user = Auth::user();
+        $adminRecord = $user->admin; // Utilizing User -> Admin relationship[cite: 2]
+
+        // Example: Fetch schedules created by this admin using the model relationship[cite: 3]
+        $schedules = $adminRecord ? $adminRecord->schedules : collect();
+
+        return view('admin.dashboard', compact('user', 'adminRecord', 'schedules'));
     }
 
     public function employees()
     {
-        return view('admin.add-edit-employee');
+        // Eager load department and user data for employees
+        $employees = Employee::with(['user', 'department'])->get();
+
+        return view('admin.add-edit-employee', compact('employees'));
     }
 
     public function profileView()
     {
-        return view('admin.profile-view');
+        $user = Auth::user();
+        return view('admin.profile-view', compact('user'));
     }
 
     public function attendance()
@@ -33,7 +46,8 @@ class AdminController extends Controller
 
     public function scheduleManagement()
     {
-        return view('admin.schedule-management');
+        $schedules = Schedule::with('admin.user')->get();
+        return view('admin.schedule-management', compact('schedules'));
     }
 
     public function statistics()

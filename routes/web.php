@@ -5,13 +5,13 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\AdminController;
 
-// Login
+// Login Routes
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
 Route::get('/login', [AuthController::class, 'showLogin']);
-Route::post('/login', [AuthController::class, 'login']); // <-- Add this to handle form submission
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout'); // <-- Add this for logging out
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Authenticated Employee Routes
+// Employee pages (Protected by auth and Employee role)
 Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function () {
     Route::get('/dashboard', [EmployeeController::class, 'dashboard']);
     Route::get('/profile', [EmployeeController::class, 'profile']);
@@ -21,7 +21,7 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
     Route::get('/payslips', [EmployeeController::class, 'payslips']);
 });
 
-// Authenticated Admin Routes
+// Admin pages (Protected by auth and Admin role)
 Route::middleware(['auth', 'role:Admin'])->prefix('admin')->group(function () {
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
     Route::get('/employees', [AdminController::class, 'employees']);

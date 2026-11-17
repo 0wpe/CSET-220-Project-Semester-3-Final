@@ -18,7 +18,6 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-    use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'Users';
     protected $primaryKey = 'user_id';
@@ -44,14 +43,6 @@ class User extends Authenticatable
         ];
     }
 
-    public function admin()
-    {
-        return $this->hasOne(Admin::class, 'user_id', 'user_id');
-    }
-
-    public function employee()
-    {
-        return $this->hasOne(Employee::class, 'user_id', 'user_id');
     public function employee(): HasOne
     {
         return $this->hasOne(Employee::class, 'user_id', 'user_id');
