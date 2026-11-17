@@ -16,11 +16,15 @@ class Admin extends Model
         'user_id',
     ];
 
+    // Inverse relationship: An admin belongs to a user
+    public function user()
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
+    // Relationship to schedules created by this admin
+    public function schedules()
     public function schedules(): HasMany
     {
         return $this->hasMany(Schedule::class, 'admin_id', 'admin_id');

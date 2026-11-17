@@ -10,6 +10,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasFactory, Notifiable;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'Users';
@@ -36,6 +44,14 @@ class User extends Authenticatable
         ];
     }
 
+    public function admin()
+    {
+        return $this->hasOne(Admin::class, 'user_id', 'user_id');
+    }
+
+    public function employee()
+    {
+        return $this->hasOne(Employee::class, 'user_id', 'user_id');
     public function employee(): HasOne
     {
         return $this->hasOne(Employee::class, 'user_id', 'user_id');

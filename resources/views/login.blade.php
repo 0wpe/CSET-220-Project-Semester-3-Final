@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Login | Tempo HR')
@@ -192,6 +191,21 @@
         font-size: 12px;
     }
 
+    /* Error alert banner */
+    .error-alert {
+        background: #FDF2F2;
+        border: 1px solid #F8D7DA;
+        color: #A94442;
+        padding: 12px 14px;
+        border-radius: 10px;
+        font-size: 12px;
+        margin-bottom: 20px;
+    }
+    .error-alert ul {
+        margin: 0;
+        padding-left: 16px;
+    }
+
     @media (max-width: 480px) {
         .login-page {
             padding-left: 24px;
@@ -238,7 +252,18 @@
             Use your company-provided account.
         </p>
 
-        <form method="POST" action="#" onsubmit="return false;">
+        <!-- Display Validation Errors if login fails -->
+        @if ($errors->any())
+            <div class="error-alert">
+                <ul>
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <form method="POST" action="{{ url('/login') }}">
 
             @csrf
 
@@ -254,7 +279,7 @@
                     id="email"
                     name="email"
                     placeholder="maya.thompson@tempo.co"
-                    value="maya.thompson@tempo.co"
+                    value="{{ old('email', 'maya.thompson@tempo.co') }}"
                     required
                 >
 
@@ -296,6 +321,7 @@
                     type="checkbox"
                     id="remember"
                     name="remember"
+                    {{ old('remember') ? 'checked' : '' }}
                 >
 
                 <label class="remember-label" for="remember">
