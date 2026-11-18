@@ -8,10 +8,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CheckRole
 {
+    /**
+     * Handle an incoming request.
+     *
+     * @param  Closure(Request): (Response)  $next
+     */
     public function handle(Request $request, Closure $next, string $role): Response
     {
         if (!$request->user() || $request->user()->role !== $role) {
-            abort(403, 'Unauthorized access to this workspace.');
+            abort(403, 'Unauthorized access.');
         }
 
         return $next($request);
