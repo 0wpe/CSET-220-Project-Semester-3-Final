@@ -21,24 +21,16 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
     Route::get('/payslips', [EmployeeController::class, 'payslips']);
 });
 
-// Admin pages (Protected by auth and Admin role)
-Route::middleware(['auth', 'role:Admin'])->prefix('admin')->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard']);
-    Route::get('/employees', [AdminController::class, 'employees']);
-    Route::get('/profile-view', [AdminController::class, 'profileView']);
-    Route::get('/attendance', [AdminController::class, 'attendance']);
-    Route::get('/payroll', [AdminController::class, 'payroll']);
-    Route::get('/schedule-management', [AdminController::class, 'scheduleManagement']);
-    Route::get('/statistics', [AdminController::class, 'statistics']);
-  
-    Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
-    Route::get('/admin/employees', [AdminController::class, 'index']);
-    Route::post('/admin/employees', [AdminController::class, 'store']);
-    Route::put('/admin/employees/{id}', [AdminController::class, 'update']);
-    Route::delete('/admin/employees/{id}', [AdminController::class, 'destroy']);
-    Route::get('/admin/profile-view', [AdminController::class, 'profileView']);
-    Route::get('/admin/attendance', [AdminController::class, 'attendance']);
-    Route::get('/admin/payroll', [AdminController::class, 'payroll']);
-    Route::get('/admin/schedule-management', [AdminController::class, 'scheduleManagement']);
-    Route::get('/admin/statistics', [AdminController::class, 'statistics']);
-});
+// Admin pages
+Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
+
+Route::get('/admin/employees', [AdminController::class, 'employees']);
+Route::post('/admin/employees', [AdminController::class, 'store']);
+Route::put('/admin/employees/{id}', [AdminController::class, 'update']);
+Route::delete('/admin/employees/{id}', [AdminController::class, 'destroy']);
+
+Route::get('/admin/profile-view', [AdminController::class, 'profileView']);
+Route::get('/admin/attendance', [AdminController::class, 'attendance']);
+Route::get('/admin/payroll', [AdminController::class, 'payroll']);
+Route::get('/admin/schedule-management', [AdminController::class, 'scheduleManagement']);
+Route::get('/admin/statistics', [AdminController::class, 'statistics']);
