@@ -21,18 +21,6 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
     Route::get('/payslips', [EmployeeController::class, 'payslips']);
 });
 
-<<<<<<< Updated upstream
-// Authenticated Admin Routes
-Route::middleware(['auth', 'role:Admin'])->prefix('admin')->group(function () {
-    Route::get('/dashboard', [AdminController::class, 'dashboard']);
-    Route::get('/employees', [AdminController::class, 'employees']);
-    Route::get('/profile-view', [AdminController::class, 'profileView']);
-    Route::get('/attendance', [AdminController::class, 'attendance']);
-    Route::get('/payroll', [AdminController::class, 'payroll']);
-    Route::get('/schedule-management', [AdminController::class, 'scheduleManagement']);
-    Route::get('/statistics', [AdminController::class, 'statistics']);
-});
-=======
 // Admin pages
 Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
 
@@ -46,4 +34,3 @@ Route::get('/admin/attendance', [AdminController::class, 'attendance']);
 Route::get('/admin/payroll', [AdminController::class, 'payroll']);
 Route::get('/admin/schedule-management', [AdminController::class, 'scheduleManagement']);
 Route::get('/admin/statistics', [AdminController::class, 'statistics']);
->>>>>>> Stashed changes
