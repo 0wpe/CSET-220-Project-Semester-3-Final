@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -18,20 +17,18 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-
-    protected $table = 'Users';
-    protected $primaryKey = 'user_id';
-    public $timestamps = false;
-
     protected $fillable = [
         'first_name',
         'last_name',
         'email',
         'password',
-        'role',
-        'profile_picture',
     ];
 
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
     protected $hidden = [
         'password',
     ];
