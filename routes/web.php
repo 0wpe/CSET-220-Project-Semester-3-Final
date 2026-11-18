@@ -24,7 +24,7 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
 // Admin pages
 Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
 
-Route::get('/admin/employees', [AdminController::class, 'index']);
+Route::get('/admin/employees', [AdminController::class, 'employees']);
 Route::post('/admin/employees', [AdminController::class, 'store']);
 Route::put('/admin/employees/{id}', [AdminController::class, 'update']);
 Route::delete('/admin/employees/{id}', [AdminController::class, 'destroy']);
