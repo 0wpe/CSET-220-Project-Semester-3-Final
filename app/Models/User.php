@@ -40,14 +40,4 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
-
-    public function employee(): HasOne
-    {
-        return $this->hasOne(Employee::class, 'user_id', 'user_id');
-    }
-
-    public function admin(): HasOne
-    {
-        return $this->hasOne(Admin::class, 'user_id', 'user_id');
-    }
 }
