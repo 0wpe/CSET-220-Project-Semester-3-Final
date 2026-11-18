@@ -22,6 +22,11 @@ class Schedule extends Model
         'schedule_month' => 'date',
     ];
 
+    // Relationship: A schedule belongs to an Admin
+    public function admin()
+    {
+        return $this->belongsTo(Admin::class, 'admin_id', 'admin_id');
+    }
     protected function casts(): array
     {
         return [
@@ -29,7 +34,6 @@ class Schedule extends Model
         ];
     }
 
-    // Relationship: A schedule belongs to an Admin
     public function admin(): BelongsTo
     {
         return $this->belongsTo(Admin::class, 'admin_id', 'admin_id');

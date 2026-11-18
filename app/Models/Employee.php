@@ -5,8 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
@@ -23,13 +21,11 @@ class Employee extends Model
         'pay_type',
     ];
 
-    // Inverse relationship: An employee belongs to a user
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
-    // Relationship to the department
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class, 'department_id', 'department_id');
