@@ -36,6 +36,7 @@ Tempo is designed to make employee management more organized and accessible for 
 - JavaScript
 - XAMPP
 - Git / GitHub
+- Postman
 
 ## Installation
 
@@ -46,6 +47,7 @@ Tempo is designed to make employee management more organized and accessible for 
 - MySQL
 - XAMPP
 - Node.js and NPM (if required for frontend assets)
+- Postman
 
 ### Setup Instructions
 
