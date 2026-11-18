@@ -106,10 +106,12 @@ Make sure your XAMPP MySQL service is running and your database has been created
 
 This project was developed as part of a semester project. Contributions and suggestions are welcome.
 
-## Team Members
+## Team Member
 
-Devon Crosson
-
+Crosson Devon
+Sayenga Owen
+Grocki Jackson
+Lucero Marco
 
 ## License
 
