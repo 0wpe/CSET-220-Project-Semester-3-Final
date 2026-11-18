@@ -4,8 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
-
 use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -61,7 +59,7 @@ class EmployeeController extends Controller
 
         return view('employee.payslips', compact('payslips'));
     }
-  
+
     public function index()
     {
         $employees = Employee::with('user')->get();
