@@ -4,21 +4,19 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class AuthController extends Controller
 {
-    // Show the login view
     public function showLogin()
     {
-        // If already logged in, redirect them to their respective dashboard
         if (Auth::check()) {
-            return $this->authenticatedRedirect(Auth::user());
+            return $this->redirectBasedOnRole(Auth::user());
         }
 
         return view('login');
     }
 
-    // Process the login form submission
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -26,11 +24,11 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        // Attempt to authenticate using the custom 'Users' table model
+        // Attempt login using the custom 'Users' table and 'hashed' password cast
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            return $this->authenticatedRedirect(Auth::user());
+            return $this->redirectBasedOnRole(Auth::user());
         }
 
         return back()->withErrors([
@@ -38,7 +36,6 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
-    // Handle logout
     public function logout(Request $request)
     {
         Auth::logout();
@@ -49,8 +46,7 @@ class AuthController extends Controller
         return redirect('/login');
     }
 
-    // Helper method for role-based redirects
-    protected function authenticatedRedirect($user)
+    protected function redirectBasedOnRole(User $user)
     {
         if ($user->role === 'Admin') {
             return redirect()->intended('/admin/dashboard');
