@@ -4,12 +4,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\PayrollController;
 
 // Login
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
 Route::get('/login', [AuthController::class, 'showLogin']);
-Route::post('/login', [AuthController::class, 'login']); // <-- Add this to handle form submission
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout'); // <-- Add this for logging out
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Authenticated Employee Routes
 Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function () {
@@ -18,7 +19,12 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
     Route::get('/time-entry', [EmployeeController::class, 'timeEntry']);
     Route::get('/leave-requests', [EmployeeController::class, 'leaveRequests']);
     Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
-    Route::get('/payslips', [EmployeeController::class, 'payslips']);
+
+    Route::get('/payslips', [EmployeeController::class, 'payslips'])
+        ->name('employee.payslips');
+
+    Route::get('/payslips/{payrollId}/download', [PayrollController::class, 'downloadPayslip'])
+        ->name('employee.payslips.download');
 });
 
 // Admin pages
