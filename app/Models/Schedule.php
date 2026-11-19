@@ -34,11 +34,6 @@ class Schedule extends Model
         ];
     }
 
-    public function admin(): BelongsTo
-    {
-        return $this->belongsTo(Admin::class, 'admin_id', 'admin_id');
-    }
-
     public function shifts(): HasMany
     {
         return $this->hasMany(Shift::class, 'schedule_id', 'schedule_id');
