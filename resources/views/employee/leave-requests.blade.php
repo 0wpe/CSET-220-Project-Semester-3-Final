@@ -423,23 +423,39 @@
 
         </div>
 
-        <div class="request-card">
+        @forelse ($recentRequests ?? collect() as $leaveRequest)
+            @php
+                $days = $leaveRequest->start_date->diffInDays($leaveRequest->end_date) + 1;
+            @endphp
 
-            <div>
-                <div class="request-title">
-                    Annual leave
+            <div class="request-card">
+                <div>
+                    <div class="request-title">
+                        {{ $leaveRequest->leave_type }}
+                    </div>
+
+                    <div class="request-date">
+                        {{ $leaveRequest->start_date->format('M j, Y') }} · {{ $days }} {{ \Illuminate\Support\Str::plural('day', $days) }}
+                    </div>
                 </div>
 
-                <div class="request-date">
-                    Nov 20, 2026 · 1 day
+                <span class="request-status">
+                    {{ $leaveRequest->status }}
+                </span>
+            </div>
+        @empty
+            <div class="request-card">
+                <div>
+                    <div class="request-title">
+                        No leave requests yet
+                    </div>
+
+                    <div class="request-date">
+                        Submitted requests will appear here.
+                    </div>
                 </div>
             </div>
-
-            <span class="request-status">
-                Approved
-            </span>
-
-        </div>
+        @endforelse
 
     </section>
 
