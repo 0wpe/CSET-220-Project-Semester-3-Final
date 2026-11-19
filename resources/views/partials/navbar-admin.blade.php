@@ -1,4 +1,3 @@
-
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -43,7 +42,7 @@
 
     .admin-navigation {
         display: grid;
-        grid-template-columns: 101px 98px 103px 68px;
+        grid-template-columns: repeat(4, 1fr);
         grid-template-rows: 39px 39px;
         gap: 2px 0;
         width: 100%;
@@ -89,13 +88,30 @@
             padding-right: 12px;
         }
 
-        .admin-navigation {
-            grid-template-columns: 27.3% 26.5% 27.8% 18.4%;
-        }
-
         .nav-link {
             font-size: 10px;
         }
+        .logout-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    padding: 0 12px;
+    background: #E7F0EB;
+    border: 1px solid #DFE7E2;
+    border-radius: 13px;
+    color: #176454;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.logout-button:hover {
+    background: #176454;
+    color: #FFFFFF;
+}
     }
 </style>
 
@@ -107,11 +123,20 @@
             tempo
         </a>
 
-        <span class="workspace-badge">
-            WORKSPACE
-        </span>
+        <div style="display: flex; align-items: center; gap: 10px;">
 
-    </div>
+    <span class="workspace-badge">
+        WORKSPACE
+    </span>
+
+    <form action="{{ route('logout') }}" method="POST">
+        @csrf
+        <button type="submit" class="logout-button">
+            Log Out
+        </button>
+    </form>
+
+</div>
 
     <nav class="admin-navigation">
 
@@ -130,16 +155,6 @@
             Attendance
         </a>
 
-        <a href="{{ url('/admin/leave-requests') }}"
-           class="nav-link {{ ($activePage ?? '') === 'leave' ? 'active' : '' }}">
-            Leave
-        </a>
-
-        <a href="{{ url('/admin/payroll') }}"
-           class="nav-link {{ ($activePage ?? '') === 'payroll' ? 'active' : '' }}">
-            Payroll
-        </a>
-
         <a href="{{ url('/admin/statistics') }}"
            class="nav-link {{ ($activePage ?? '') === 'statistics' ? 'active' : '' }}">
             Statistics
@@ -150,9 +165,19 @@
             Schedule
         </a>
 
-        <a href="{{ url('/admin/profile') }}"
+        <a href="{{ url('/admin/profile-view') }}"
            class="nav-link {{ ($activePage ?? '') === 'profile' ? 'active' : '' }}">
             Profile
+        </a>
+
+        <a href="{{ url('/admin/leave-requests') }}"
+           class="nav-link {{ ($activePage ?? '') === 'leave' ? 'active' : '' }}">
+            Leave
+        </a>
+
+        <a href="{{ url('/admin/payroll') }}"
+           class="nav-link {{ ($activePage ?? '') === 'payroll' ? 'active' : '' }}">
+            Payroll
         </a>
 
     </nav>

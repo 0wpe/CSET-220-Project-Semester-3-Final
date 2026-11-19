@@ -269,6 +269,28 @@
 </style>
 
 <main class="leave-page">
+    {{-- Success Alert --}}
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="text-align: center">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    {{-- Specific 'error' Key or General Validation Errors --}}
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="text-align: center">
+            @if ($errors->has('error'))
+                {{ $errors->first('error') }}
+            @else
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+    @endif
+
 
     <div class="eyebrow">TIME TO RECHARGE</div>
 
@@ -300,8 +322,8 @@
 
     <!-- Leave request form -->
 
-    <form class="leave-form" onsubmit="return false;">
-
+    <form class="leave-form" method="POST" action="{{ url('employee/leave-requests') }}">
+        @csrf
         <div class="form-group">
 
             <label class="form-label" for="leave-type">
@@ -401,23 +423,39 @@
 
         </div>
 
-        <div class="request-card">
+        @forelse ($recentRequests ?? collect() as $leaveRequest)
+            @php
+                $days = $leaveRequest->start_date->diffInDays($leaveRequest->end_date) + 1;
+            @endphp
 
-            <div>
-                <div class="request-title">
-                    Annual leave
+            <div class="request-card">
+                <div>
+                    <div class="request-title">
+                        {{ $leaveRequest->leave_type }}
+                    </div>
+
+                    <div class="request-date">
+                        {{ $leaveRequest->start_date->format('M j, Y') }} · {{ $days }} {{ \Illuminate\Support\Str::plural('day', $days) }}
+                    </div>
                 </div>
 
-                <div class="request-date">
-                    Nov 20, 2026 · 1 day
+                <span class="request-status">
+                    {{ $leaveRequest->status }}
+                </span>
+            </div>
+        @empty
+            <div class="request-card">
+                <div>
+                    <div class="request-title">
+                        No leave requests yet
+                    </div>
+
+                    <div class="request-date">
+                        Submitted requests will appear here.
+                    </div>
                 </div>
             </div>
-
-            <span class="request-status">
-                Approved
-            </span>
-
-        </div>
+        @endforelse
 
     </section>
 
