@@ -269,6 +269,28 @@
 </style>
 
 <main class="leave-page">
+    {{-- Success Alert --}}
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="text-align: center">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    {{-- Specific 'error' Key or General Validation Errors --}}
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="text-align: center">
+            @if ($errors->has('error'))
+                {{ $errors->first('error') }}
+            @else
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+    @endif
+
 
     <div class="eyebrow">TIME TO RECHARGE</div>
 
@@ -300,8 +322,8 @@
 
     <!-- Leave request form -->
 
-    <form class="leave-form" onsubmit="return false;">
-
+    <form class="leave-form" method="POST" action="{{ url('employee/leave-requests') }}">
+        @csrf
         <div class="form-group">
 
             <label class="form-label" for="leave-type">

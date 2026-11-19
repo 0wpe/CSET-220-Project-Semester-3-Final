@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\LeaveRequestController;
+use App\Models\LeaveRequest;
 
 // Login
 Route::get('/', [AuthController::class, 'showLogin'])->name('login');
@@ -16,10 +18,13 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
     Route::get('/dashboard', [EmployeeController::class, 'dashboard']);
     Route::get('/profile', [EmployeeController::class, 'profile']);
     Route::get('/time-entry', [EmployeeController::class, 'timeEntry']);
-    Route::get('/leave-requests', [EmployeeController::class, 'leaveRequests']);
-    Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
+    Route::get('employee/leave-requests', [EmployeeController::class, 'leaveRequests'])->name('employee.leave-requests.index');
+    Route::post('employee/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');    Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
     Route::get('/payslips', [EmployeeController::class, 'payslips']);
 });
+
+Route::get('employee/leave-requests', [EmployeeController::class, 'leaveRequests'])->name('employee.leave-requests.index');
+Route::post('employee/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');
 
 // Admin pages
 Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
