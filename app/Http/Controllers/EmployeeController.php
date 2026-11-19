@@ -8,12 +8,14 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\PayrollController;
+
 class EmployeeController extends Controller
 {
     public function dashboard()
     {
         return view('employee.dashboard');
-
     }
 
     public function profile()
@@ -36,16 +38,26 @@ class EmployeeController extends Controller
         return view('employee.my-schedule');
     }
 
+    // Display the logged-in employee's processed payslips
     public function payslips()
     {
-        return view('employee.payslips');
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $payrolls = app(PayrollController::class)
+            ->employeePayslips($employee->employee_id);
+
+        return view('employee.payslips', compact('employee', 'payrolls'));
     }
+
     public function index()
     {
         $employees = Employee::with('user')->get();
         $departments = DB::table('departments')->get();
+
         return view('admin.add-edit-employee', compact('employees', 'departments'));
     }
+
     public function store(Request $request)
     {
         $validatedData = $request->validate([
@@ -58,6 +70,7 @@ class EmployeeController extends Controller
             'hourly_rate' => 'nullable|numeric|min:0',
             'pay_type' => 'required|in:Hourly,Salaried',
         ]);
+
         $temporaryPassword = Str::random(12);
 
         DB::transaction(function () use ($validatedData, $temporaryPassword) {
@@ -83,6 +96,7 @@ class EmployeeController extends Controller
             ->with('success', 'Employee added successfully.')
             ->with('temporaryPassword', $temporaryPassword);
     }
+
     public function update(Request $request, $id)
     {
         $employee = Employee::findOrFail($id);
@@ -99,11 +113,12 @@ class EmployeeController extends Controller
 
         return redirect()->back()->with('success', 'Employee updated successfully.');
     }
+
     public function destroy($id)
     {
         $employee = Employee::findOrFail($id);
         $employee->delete();
 
-        return redirect()->back()->with('success', 'Employee deleted successfully.');
+        return redirect()->back();
     }
 }

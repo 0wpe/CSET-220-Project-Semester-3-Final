@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Your Payslips | Tempo HR')
@@ -43,8 +42,6 @@
         margin: 0 0 26px;
     }
 
-    /* Latest net pay */
-
     .latest-pay {
         padding: 17px 20px;
         background: #176454;
@@ -70,8 +67,6 @@
         font-size: 12px;
     }
 
-    /* Monthly history */
-
     .history-section {
         margin-top: 26px;
     }
@@ -95,8 +90,6 @@
         font-size: 12px;
         font-weight: 500;
     }
-
-    /* Expanded payslip */
 
     .payslip-card {
         padding: 18px;
@@ -184,8 +177,6 @@
         white-space: nowrap;
     }
 
-    /* Download button */
-
     .download-button {
         width: 100%;
         height: 43px;
@@ -198,13 +189,15 @@
         font-size: 14px;
         font-weight: 600;
         cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .download-button:hover {
-        background: #125447;
+        background: #124F42;
     }
-
-    /* Previous payslips */
 
     .previous-payslip {
         background: #FFFFFF;
@@ -292,6 +285,23 @@
         font-size: 12px;
         font-weight: 600;
         cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .previous-download:hover {
+        background: #D5E8DC;
+    }
+
+    .empty-state {
+        padding: 30px 20px;
+        background: #FFFFFF;
+        border-radius: 16px;
+        color: #687B74;
+        font-size: 13px;
+        text-align: center;
     }
 
     @media (min-width: 700px) {
@@ -334,219 +344,242 @@
         Your earnings, clearly broken down.
     </p>
 
-    <!-- Latest net pay -->
+    @if($payrolls->isNotEmpty())
 
-    <section class="latest-pay">
+        @php
+            $latestPayslip = $payrolls->first();
+            $previousPayslips = $payrolls->slice(1);
+            $latestMonth = \Carbon\Carbon::parse($latestPayslip->payroll_month);
+        @endphp
 
-        <div class="latest-label">
-            LATEST NET PAY · OCTOBER 2026
-        </div>
+        <!-- Latest net pay -->
+        <section class="latest-pay">
 
-        <div class="latest-amount">
-            $4,750.00
-        </div>
+            <div class="latest-label">
+                LATEST NET PAY · {{ strtoupper($latestMonth->format('F Y')) }}
+            </div>
 
-        <div class="latest-date">
-            Paid October 31, 2026
-        </div>
+            <div class="latest-amount">
+                ${{ number_format($latestPayslip->net_pay, 2) }}
+            </div>
 
-    </section>
+            <div class="latest-date">
+                Processed payroll for {{ $latestMonth->format('F Y') }}
+            </div>
 
-    <!-- Monthly history -->
+        </section>
 
-    <section class="history-section">
+        <!-- Monthly history -->
+        <section class="history-section">
 
-        <div class="section-heading">
+            <div class="section-heading">
 
-            <h2 class="section-title">
-                Monthly history
-            </h2>
+                <h2 class="section-title">
+                    Monthly history
+                </h2>
 
-            <span class="section-year">
-                2026
-            </span>
-
-        </div>
-
-        <!-- October payslip -->
-
-        <article class="payslip-card">
-
-            <div class="payslip-header">
-
-                <h3 class="payslip-month">
-                    October 2026
-                </h3>
-
-                <span class="paid-badge">
-                    Paid
+                <span class="section-year">
+                    {{ $latestMonth->format('Y') }}
                 </span>
 
             </div>
 
-            <div class="employee-name">
-                Maya Thompson · EMP-024
-            </div>
+            <!-- Latest payslip -->
+            <article class="payslip-card">
 
-            <div class="period-label">
-                Pay period
-            </div>
+                <div class="payslip-header">
 
-            <div class="period-date">
-                Oct 1 – Oct 31, 2026
-            </div>
+                    <h3 class="payslip-month">
+                        {{ $latestMonth->format('F Y') }}
+                    </h3>
 
-            <div class="payslip-divider"></div>
+                    <span class="paid-badge">
+                        Processed
+                    </span>
 
-            <div class="earning-row">
-                <span>Regular earnings · 160 h</span>
-                <span class="earning-amount">$5,200.00</span>
-            </div>
-
-            <div class="earning-row">
-                <span>Overtime · 4 h</span>
-                <span class="earning-amount">$195.00</span>
-            </div>
-
-            <div class="earning-row">
-                <span>Deductions · tax &amp; benefits</span>
-                <span class="earning-amount">−$645.00</span>
-            </div>
-
-            <div class="payslip-divider"></div>
-
-            <div class="net-pay-row">
-                <span>Net pay</span>
-                <span class="net-pay-amount">$4,750.00</span>
-            </div>
-
-            <button type="button" class="download-button" onclick="alert('PDF downloads will be available when payroll is connected.')">
-                Download PDF
-            </button>
-
-        </article>
-
-        <!-- September payslip -->
-
-        <article class="previous-payslip">
-
-            <button
-                type="button"
-                class="previous-toggle"
-                aria-expanded="false"
-                aria-controls="september-details"
-            >
-
-                <div class="previous-info">
-                    <div class="previous-month">September 2026</div>
-                    <div class="previous-period">Sep 1 – Sep 30, 2026</div>
                 </div>
 
-                <div class="previous-payment">
-                    <div class="previous-amount">$4,555.00 <span class="previous-arrow">›</span></div>
-                    <div class="previous-status">Paid · View details</div>
+                <div class="employee-name">
+                    {{ $employee->user->first_name }}
+                    {{ $employee->user->last_name }}
+                    · Employee ID: {{ $employee->employee_id }}
                 </div>
 
-            </button>
+                <div class="period-label">
+                    Pay period
+                </div>
 
-            <div class="previous-details" id="september-details">
+                <div class="period-date">
+                    {{ $latestMonth->copy()->startOfMonth()->format('M j') }}
+                    –
+                    {{ $latestMonth->copy()->endOfMonth()->format('M j, Y') }}
+                </div>
 
                 <div class="payslip-divider"></div>
 
                 <div class="earning-row">
-                    <span>Regular earnings · 160 h</span>
-                    <span class="earning-amount">$5,000.00</span>
+                    <span>Regular hours</span>
+                    <span class="earning-amount">
+                        {{ number_format($latestPayslip->regular_hours ?? 0, 2) }} h
+                    </span>
                 </div>
 
                 <div class="earning-row">
-                    <span>Overtime · 2 h</span>
-                    <span class="earning-amount">$100.00</span>
+                    <span>Overtime hours</span>
+                    <span class="earning-amount">
+                        {{ number_format($latestPayslip->overtime_hours ?? 0, 2) }} h
+                    </span>
                 </div>
 
                 <div class="earning-row">
-                    <span>Deductions · tax &amp; benefits</span>
-                    <span class="earning-amount">−$545.00</span>
+                    <span>Gross earnings</span>
+                    <span class="earning-amount">
+                        ${{ number_format($latestPayslip->gross_pay, 2) }}
+                    </span>
+                </div>
+
+                <div class="earning-row">
+                    <span>Deductions</span>
+                    <span class="earning-amount">
+                        -${{ number_format($latestPayslip->deductions, 2) }}
+                    </span>
                 </div>
 
                 <div class="payslip-divider"></div>
 
                 <div class="net-pay-row">
                     <span>Net pay</span>
-                    <span class="net-pay-amount">$4,555.00</span>
+                    <span class="net-pay-amount">
+                        ${{ number_format($latestPayslip->net_pay, 2) }}
+                    </span>
                 </div>
 
-                <button type="button" class="previous-download" style="margin-top: 16px;" onclick="alert('PDF downloads will be available when payroll is connected.')">
+                <a
+                    href="{{ route('employee.payslips.download', $latestPayslip->payroll_id) }}"
+                    class="download-button"
+                >
                     Download PDF
-                </button>
+                </a>
 
-            </div>
+            </article>
 
-        </article>
+            <!-- Previous payslips -->
+            @foreach($previousPayslips as $payslip)
 
-        <!-- August payslip -->
+                @php
+                    $month = \Carbon\Carbon::parse($payslip->payroll_month);
+                    $detailsId = 'payslip-details-' . $payslip->payroll_id;
+                @endphp
 
-        <article class="previous-payslip">
+                <article class="previous-payslip">
 
-            <button
-                type="button"
-                class="previous-toggle"
-                aria-expanded="false"
-                aria-controls="august-details"
-            >
+                    <button
+                        type="button"
+                        class="previous-toggle"
+                        aria-expanded="false"
+                        aria-controls="{{ $detailsId }}"
+                    >
 
-                <div class="previous-info">
-                    <div class="previous-month">August 2026</div>
-                    <div class="previous-period">Aug 1 – Aug 31, 2026</div>
-                </div>
+                        <div class="previous-info">
 
-                <div class="previous-payment">
-                    <div class="previous-amount">$4,640.00 <span class="previous-arrow">›</span></div>
-                    <div class="previous-status">Paid · View details</div>
-                </div>
+                            <div class="previous-month">
+                                {{ $month->format('F Y') }}
+                            </div>
 
-            </button>
+                            <div class="previous-period">
+                                {{ $month->copy()->startOfMonth()->format('M j') }}
+                                –
+                                {{ $month->copy()->endOfMonth()->format('M j, Y') }}
+                            </div>
 
-            <div class="previous-details" id="august-details">
+                        </div>
 
-                <div class="payslip-divider"></div>
+                        <div class="previous-payment">
 
-                <div class="earning-row">
-                    <span>Regular earnings · 160 h</span>
-                    <span class="earning-amount">$5,000.00</span>
-                </div>
+                            <div class="previous-amount">
+                                ${{ number_format($payslip->net_pay, 2) }}
+                                <span class="previous-arrow">›</span>
+                            </div>
 
-                <div class="earning-row">
-                    <span>Overtime · 4 h</span>
-                    <span class="earning-amount">$200.00</span>
-                </div>
+                            <div class="previous-status">
+                                Processed · View details
+                            </div>
 
-                <div class="earning-row">
-                    <span>Deductions · tax &amp; benefits</span>
-                    <span class="earning-amount">−$560.00</span>
-                </div>
+                        </div>
 
-                <div class="payslip-divider"></div>
+                    </button>
 
-                <div class="net-pay-row">
-                    <span>Net pay</span>
-                    <span class="net-pay-amount">$4,640.00</span>
-                </div>
+                    <div class="previous-details" id="{{ $detailsId }}">
 
-                <button type="button" class="previous-download" style="margin-top: 16px;" onclick="alert('PDF downloads will be available when payroll is connected.')">
-                    Download PDF
-                </button>
+                        <div class="payslip-divider"></div>
 
-            </div>
+                        <div class="earning-row">
+                            <span>Regular hours</span>
+                            <span class="earning-amount">
+                                {{ number_format($payslip->regular_hours ?? 0, 2) }} h
+                            </span>
+                        </div>
 
-        </article>
+                        <div class="earning-row">
+                            <span>Overtime hours</span>
+                            <span class="earning-amount">
+                                {{ number_format($payslip->overtime_hours ?? 0, 2) }} h
+                            </span>
+                        </div>
 
-    </section>
+                        <div class="earning-row">
+                            <span>Gross earnings</span>
+                            <span class="earning-amount">
+                                ${{ number_format($payslip->gross_pay, 2) }}
+                            </span>
+                        </div>
+
+                        <div class="earning-row">
+                            <span>Deductions</span>
+                            <span class="earning-amount">
+                                -${{ number_format($payslip->deductions, 2) }}
+                            </span>
+                        </div>
+
+                        <div class="payslip-divider"></div>
+
+                        <div class="net-pay-row">
+                            <span>Net pay</span>
+                            <span class="net-pay-amount">
+                                ${{ number_format($payslip->net_pay, 2) }}
+                            </span>
+                        </div>
+
+                        <a
+                            href="{{ route('employee.payslips.download', $payslip->payroll_id) }}"
+                            class="previous-download"
+                            style="margin-top: 16px;"
+                        >
+                            Download PDF
+                        </a>
+
+                    </div>
+
+                </article>
+
+            @endforeach
+
+        </section>
+
+    @else
+
+        <section class="empty-state">
+            You don't have any processed payslips yet.
+        </section>
+
+    @endif
 
 </main>
 
 <script>
     document.querySelectorAll('.previous-toggle').forEach(button => {
         button.addEventListener('click', function () {
+
             const detailsId = this.getAttribute('aria-controls');
             const details = document.getElementById(detailsId);
             const isOpen = details.classList.toggle('open');
