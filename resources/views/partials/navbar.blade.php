@@ -90,6 +90,22 @@
         .nav-link {
             font-size: 11px;
         }
+
+        .logout-button {
+        background: #176454;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        font-family: 'Inter', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+}
+
+    .logout-button:hover {
+    background: #124d41;
+}
     }
 </style>
 
@@ -101,11 +117,20 @@
             tempo
         </a>
 
-        <span class="workspace-badge">
-            WORKSPACE
-        </span>
+        <div style="display: flex; align-items: center; gap: 12px;">
 
-    </div>
+    <span class="workspace-badge">
+        WORKSPACE
+    </span>
+
+    <form action="{{ route('logout') }}" method="POST">
+        @csrf
+        <button type="submit" class="logout-button">
+            Log Out
+        </button>
+    </form>
+
+</div>
 
     <nav class="horizontal-navigation">
 
@@ -131,7 +156,7 @@
 
         <a href="{{ url('/employee/payslips') }}"
            class="nav-link {{ ($activePage ?? '') === 'payslips' ? 'active' : '' }}">
-            Admin
+            Payslips
         </a>
 
     </nav>
