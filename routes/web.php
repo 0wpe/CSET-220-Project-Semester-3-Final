@@ -24,10 +24,10 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
 // Admin pages
 Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
 
-Route::get('/admin/employees', [AdminController::class, 'index']);
-Route::post('/admin/employees', [AdminController::class, 'store']);
-Route::put('/admin/employees/{id}', [AdminController::class, 'update']);
-Route::delete('/admin/employees/{id}', [AdminController::class, 'destroy']);
+Route::get('/admin/employees', [EmployeeController::class, 'index']);
+Route::post('/admin/employees', [EmployeeController::class, 'store']);
+Route::put('/admin/employees/{id}', [EmployeeController::class, 'update']);
+Route::delete('/admin/employees/{id}', [EmployeeController::class, 'destroy']);
 
 Route::get('/admin/profile-view', [AdminController::class, 'profileView']);
 Route::get('/admin/attendance', [AdminController::class, 'attendance']);
