@@ -327,7 +327,7 @@
     </main>
 
     <script>
-        let elapsedSeconds = 41 * 60;
+        let elapsedSeconds = 0;
         let isClockedIn = true;
         let clockInTimestamp = Date.now() - elapsedSeconds * 1000;
         let timerInterval = null;
