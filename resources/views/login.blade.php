@@ -278,8 +278,8 @@
                     type="email"
                     id="email"
                     name="email"
-                    placeholder="maya.thompson@tempo.co"
-                    value="{{ old('email', 'maya.thompson@tempo.co') }}"
+                    placeholder="email"
+                    value="{{ old('email') }}"
                     required
                 >
 
