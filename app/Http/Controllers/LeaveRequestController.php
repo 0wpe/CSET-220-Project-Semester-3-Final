@@ -12,6 +12,24 @@ use Illuminate\Support\Facades\Log;
 
 class LeaveRequestController extends Controller
 {
+    public function index()
+    {
+        $employee = Employee::where('user_id', Auth::id())->first();
+
+        $recentRequests = $employee
+            ? LeaveRequest::where('employee_id', $employee->employee_id)
+                ->orderByDesc('submitted_at')
+                ->orderByDesc('request_id')
+                ->take(5)
+                ->get()
+            : collect();
+
+        return view('employee.leave-requests', [
+            'employee' => $employee,
+            'recentRequests' => $recentRequests,
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

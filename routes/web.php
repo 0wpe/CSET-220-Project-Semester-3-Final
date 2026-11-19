@@ -18,13 +18,10 @@ Route::middleware(['auth', 'role:Employee'])->prefix('employee')->group(function
     Route::get('/dashboard', [EmployeeController::class, 'dashboard']);
     Route::get('/profile', [EmployeeController::class, 'profile']);
     Route::get('/time-entry', [EmployeeController::class, 'timeEntry']);
-    Route::get('employee/leave-requests', [EmployeeController::class, 'leaveRequests'])->name('employee.leave-requests.index');
-    Route::post('employee/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');    Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
+    Route::get('/leave-requests', [LeaveRequestController::class, 'index'])->name('employee.leave-requests.index');
+    Route::post('/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');    Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
     Route::get('/payslips', [EmployeeController::class, 'payslips']);
 });
-
-Route::get('employee/leave-requests', [EmployeeController::class, 'leaveRequests'])->name('employee.leave-requests.index');
-Route::post('employee/leave-requests', [LeaveRequestController::class, 'store'])->name('leave-requests.store');
 
 // Admin pages
 Route::get('/admin/dashboard', [AdminController::class, 'dashboard']);
