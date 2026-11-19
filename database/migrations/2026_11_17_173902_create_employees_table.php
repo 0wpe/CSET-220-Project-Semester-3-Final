@@ -1,4 +1,4 @@
-<?php
+\<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -6,30 +6,29 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
-    {
-        Schema::create('employees', function (Blueprint $table) {
-            $table->id('employee_id');
-            
-            $table->foreignId('user_id')->unique()->constrained('users')->onDelete('cascade');
+   public function up(): void
+   {
+       Schema::create('employees', function (Blueprint $table) {
+           $table->id('employee_id');
 
-             $table->unsignedBigInteger(‘department_id’)->nullable();             
-             $table->string(‘designation’)->nullable();             
-             $table->decimal(‘base_salary’, 10, 2)->default(0);             
-             $table->decimal(‘hourly_rate’, 10, 2)->default(0);             
-             $table->enum(‘pay_type’, [‘Hourly’, ‘Salary’])->default(‘Hourly’);              
-             $table->timestamps(); 
-             });     
-    }
+           $table->foreignId('user_id')
+               ->unique()
+               ->constrained('users')
+               ->onDelete('cascade');
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('employees');
-    }
+           $table->unsignedBigInteger('department_id')->nullable();
+           $table->string('designation')->nullable();
+           $table->decimal('base_salary', 10, 2)->default(0);
+           $table->decimal('hourly_rate', 10, 2)->default(0);
+           $table->enum('pay_type', ['Hourly', 'Salary'])->default('Hourly');
+
+           $table->timestamps();
+       });
+   }
+
+   public function down(): void
+   {
+       Schema::dropIfExists('employees');
+   }
 };
+

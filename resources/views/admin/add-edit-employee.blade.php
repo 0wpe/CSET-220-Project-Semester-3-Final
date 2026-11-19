@@ -178,11 +178,13 @@
     </div>
 
     <form method="POST" action="{{ url('/admin/employees') }}">
-        @if(session('success'))
-    <p style="color: green;">
-        {{ session('success') }}
-    </p>
-@endif
+    @csrf
+
+    @if(session('success'))
+        <p style="color: green;">
+            {{ session('success') }}
+        </p>
+    @endif
 
 @if(session('temporaryPassword'))
     <p style="color: green;">
@@ -205,23 +207,20 @@
             <div class="form-grid">
 
                 <div class="field">
-                    <label for="employeeName">Employee name</label>
-                    <input type="text" id="employeeName" value="Maya Thompson" required>
+                    <label for="first_name">First name</label>
+                    <input type="text" id="first_name" name="first_name" required>
                 </div>
 
                 <div class="field">
-                    <label for="employeeId">Employee ID</label>
-                    <input type="text" id="employeeId" value="EMP-024" required>
+                    <label for="last_name">Last name</label>
+                    <input type="text" id="last_name" name="last_name" required>
                 </div>
 
-                <div class="field">
-                    <label for="phone">Phone</label>
-                    <input type="tel" id="phone" value="+1 (415) 555-0182">
-                </div>
+                
 
                 <div class="field full">
                     <label for="email">Work email</label>
-                    <input type="email" id="email" value="maya.thompson@tempo.co" required>
+                    <input type="email" id="email" name="email" required>
                 </div>
 
             </div>
@@ -235,21 +234,24 @@
             <div class="form-grid">
 
                 <div class="field">
-                    <label for="department">Department</label>
-                    <select id="department">
-                        <option>Design</option>
-                        <option>Engineering</option>
-                        <option>Marketing</option>
-                        <option>People</option>
-                        <option>Finance</option>
-                        <option>Operations</option>
-                    </select>
-                </div>
+    <label for="department">Department</label>
+
+    <select id="department" name="department_id" required>
+        <option value="">Select Department</option>
+
+        @foreach($departments as $department)
+            <option value="{{ $department->department_id }}">
+                {{ $department->department_name }}
+            </option>
+        @endforeach
+
+    </select>
+</div>
 
                 <div class="field">
-                    <label for="designation">Designation</label>
-                    <input type="text" id="designation" value="Product Designer">
-                </div>
+    <label for="designation">Designation</label>
+    <input type="text" id="designation" name="designation" placeholder="Enter designation" required>
+</div>
 
                 <div class="field full">
                     <label for="manager">Manager</label>
@@ -276,8 +278,8 @@
                 </div>
 
                 <div class="field full">
-                    <label for="salary" id="salaryLabel">Monthly salary (USD)</label>
-                    <input type="number" id="salary" value="5200.00" min="0" step="0.01">
+                <label for="salary" id="salaryLabel">Monthly salary (USD)</label>
+                <input type="number" id="salary" name="base_salary" placeholder="Enter salary" min="0" step="0.01" required>
                 </div>
 
             </div>
@@ -294,25 +296,18 @@
 
 <script>
     function setMode(mode) {
-        document.getElementById('addMode').classList.toggle('active', mode === 'add');
-        document.getElementById('editMode').classList.toggle('active', mode === 'edit');
+    document.getElementById('addMode').classList.toggle('active', mode === 'add');
+    document.getElementById('editMode').classList.toggle('active', mode === 'edit');
 
-        if (mode === 'add') {
-            document.getElementById('employeeName').value = '';
-            document.getElementById('employeeId').value = '';
-            document.getElementById('phone').value = '';
-            document.getElementById('email').value = '';
-            document.getElementById('designation').value = '';
-            document.getElementById('salary').value = '';
-        } else {
-            document.getElementById('employeeName').value = 'Maya Thompson';
-            document.getElementById('employeeId').value = 'EMP-024';
-            document.getElementById('phone').value = '+1 (415) 555-0182';
-            document.getElementById('email').value = 'maya.thompson@tempo.co';
-            document.getElementById('designation').value = 'Product Designer';
-            document.getElementById('salary').value = '5200.00';
-        }
+    if (mode === 'add') {
+        document.getElementById('first_name').value = '';
+        document.getElementById('last_name').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('designation').value = '';
+        document.getElementById('salary').value = '';
+        document.getElementById('department').value = '';
     }
+}
 
     function setPayType(type) {
         document.getElementById('hourlyMode').classList.toggle('active', type === 'hourly');

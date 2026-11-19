@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 class EmployeeController extends Controller
 {
     public function dashboard()
@@ -64,7 +65,7 @@ class EmployeeController extends Controller
                 'first_name' => $validatedData['first_name'],
                 'last_name' => $validatedData['last_name'],
                 'email' => $validatedData['email'],
-                'password' => $temporaryPassword,
+                'password' => Hash::make($temporaryPassword),
                 'role' => 'employee',
             ]);
 
