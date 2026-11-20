@@ -82,6 +82,28 @@
         font-weight: 600;
     }
 
+    .logout-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 26px;
+        padding: 0 12px;
+        background: #E7F0EB;
+        border: 1px solid #DFE7E2;
+        border-radius: 13px;
+        color: #176454;
+        font-family: 'Inter', sans-serif;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .logout-button:hover {
+        background: #176454;
+        color: #FFFFFF;
+    }
+
     @media (max-width: 400px) {
         .top-navbar {
             padding-left: 12px;
@@ -91,27 +113,6 @@
         .nav-link {
             font-size: 10px;
         }
-        .logout-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 26px;
-    padding: 0 12px;
-    background: #E7F0EB;
-    border: 1px solid #DFE7E2;
-    border-radius: 13px;
-    color: #176454;
-    font-family: 'Inter', sans-serif;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s ease, color 0.2s ease;
-}
-
-.logout-button:hover {
-    background: #176454;
-    color: #FFFFFF;
-}
     }
 </style>
 
@@ -125,18 +126,20 @@
 
         <div style="display: flex; align-items: center; gap: 10px;">
 
-    <span class="workspace-badge">
-        WORKSPACE
-    </span>
+            <span class="workspace-badge">
+                WORKSPACE
+            </span>
 
-    <form action="{{ route('logout') }}" method="POST">
-        @csrf
-        <button type="submit" class="logout-button">
-            Log Out
-        </button>
-    </form>
+            <form action="{{ route('logout') }}" method="POST">
+                @csrf
+                <button type="submit" class="logout-button">
+                    Log Out
+                </button>
+            </form>
 
-</div>
+        </div>
+
+    </div>
 
     <nav class="admin-navigation">
 
@@ -165,7 +168,7 @@
             Schedule
         </a>
 
-        <a href="{{ url('/admin/profile-view') }}"
+        <a href="{{ route('admin.profile') }}"
            class="nav-link {{ ($activePage ?? '') === 'profile' ? 'active' : '' }}">
             Profile
         </a>

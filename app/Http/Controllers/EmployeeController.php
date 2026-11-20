@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\PayrollController;
 
 class EmployeeController extends Controller
@@ -20,7 +21,51 @@ class EmployeeController extends Controller
 
     public function profile()
     {
-        return view('employee.profile');
+        $employee = Employee::with(['user', 'department'])
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        return view('employee.profile', compact('employee'));
+    }
+
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+
+        $validatedData = $request->validate([
+            'first_name' => 'required|string|max:100',
+            'last_name' => 'required|string|max:100',
+            'email' => 'required|email|max:255|unique:Users,email,' . $user->user_id . ',user_id',
+            'phone_number' => 'nullable|string|max:20',
+            'location' => 'nullable|string|max:255',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+        ]);
+
+        $updateData = [
+            'first_name' => $validatedData['first_name'],
+            'last_name' => $validatedData['last_name'],
+            'email' => $validatedData['email'],
+            'phone_number' => $validatedData['phone_number'] ?? null,
+            'location' => $validatedData['location'] ?? null,
+        ];
+
+        if ($request->hasFile('profile_picture')) {
+            $newPicturePath = $request->file('profile_picture')
+                ->store('profile-pictures', 'public');
+
+            if ($user->profile_picture) {
+                Storage::disk('public')->delete($user->profile_picture);
+            }
+
+            $updateData['profile_picture'] = $newPicturePath;
+        }
+
+        DB::table('Users')
+            ->where('user_id', $user->user_id)
+            ->update($updateData);
+
+        return redirect('/employee/profile')
+            ->with('success', 'Profile updated successfully.');
     }
 
     public function timeEntry()
