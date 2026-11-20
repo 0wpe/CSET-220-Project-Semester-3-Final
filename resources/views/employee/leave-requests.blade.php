@@ -331,10 +331,10 @@
             </label>
 
             <select class="form-control" id="leave-type" name="leave_type">
-                <option value="annual">Annual leave</option>
-                <option value="personal">Personal leave</option>
-                <option value="sick">Sick leave</option>
-                <option value="unpaid">Unpaid leave</option>
+                <option value="Annual Leave" {{ old('leave_type') === 'Annual Leave' ? 'selected' : '' }}>Annual leave</option>
+                <option value="Personal Leave" {{ old('leave_type') === 'Personal Leave' ? 'selected' : '' }}>Personal leave</option>
+                <option value="Sick Leave" {{ old('leave_type') === 'Sick Leave' ? 'selected' : '' }}>Sick leave</option>
+                <option value="Unpaid Leave" {{ old('leave_type') === 'Unpaid Leave' ? 'selected' : '' }}>Unpaid leave</option>
             </select>
 
         </div>

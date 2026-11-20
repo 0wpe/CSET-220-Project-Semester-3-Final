@@ -63,4 +63,9 @@ Route::middleware(['auth', 'role:Admin'])
         Route::get('/schedule-management', [AdminController::class, 'scheduleManagement']);
 
         Route::get('/statistics', [AdminController::class, 'statistics']);
+
+        Route::get('/leave-requests', [LeaveRequestController::class, 'index'])->name('admin.leave-requests.index');
+
+        Route::patch('/leave-requests/{leaveRequest}/status', [LeaveRequestController::class, 'update'])
+            ->name('admin.leave-requests.update-status');
     });
