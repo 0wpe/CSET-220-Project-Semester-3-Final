@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -57,7 +58,8 @@ Route::middleware(['auth', 'role:Admin'])
 
         Route::delete('/employees/{id}', [AdminController::class, 'destroy']);
 
-        Route::get('/leave-requests', [LeaveRequestController::class, 'index'])->name('admin.leave-requests.index');
+        Route::get('/leave-requests', [LeaveRequestController::class, 'index'])
+            ->name('admin.leave-requests.index');
 
         Route::patch('/leave-requests/{leaveRequest}/status', [LeaveRequestController::class, 'update'])
             ->name('admin.leave-requests.update-status');
@@ -77,7 +79,35 @@ Route::middleware(['auth', 'role:Admin'])
 
         Route::get('/payroll', [AdminController::class, 'payroll']);
 
+        // Schedule Management
         Route::get('/schedule-management', [AdminController::class, 'scheduleManagement']);
+
+        Route::post('/schedule-management', [AdminController::class, 'storeSchedule'])
+            ->name('admin.schedules.store');
+
+        Route::post('/schedules/{schedule}/shifts', [AdminController::class, 'storeShift'])
+            ->name('admin.schedules.shifts.store');
+
+        Route::put('/shifts/{shift}', [AdminController::class, 'updateShift'])
+            ->name('admin.schedules.shifts.update');
+
+        Route::delete('/shifts/{shift}', [AdminController::class, 'destroyShift'])
+            ->name('admin.schedules.shifts.destroy');
+
+        Route::post('/shifts/{shift}/assignments', [AdminController::class, 'storeShiftAssignment'])
+            ->name('admin.schedules.assignments.store');
+
+        Route::delete('/shift-assignments/{assignment}', [AdminController::class, 'destroyShiftAssignment'])
+            ->name('admin.schedules.assignments.destroy');
+
+        Route::patch('/schedules/{schedule}/draft', [AdminController::class, 'saveScheduleDraft'])
+            ->name('admin.schedules.draft');
+
+        Route::patch('/schedules/{schedule}/publish', [AdminController::class, 'publishSchedule'])
+            ->name('admin.schedules.publish');
+
+        Route::patch('/schedules/{schedule}/reopen', [AdminController::class, 'reopenSchedule'])
+            ->name('admin.schedules.reopen');
 
         Route::get('/statistics', [AdminController::class, 'statistics']);
     });
