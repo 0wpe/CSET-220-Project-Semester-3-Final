@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Models\Department;
 
 class AdminController extends Controller
 {
@@ -18,9 +19,13 @@ class AdminController extends Controller
     }
 
     public function employees()
-    {
-        return view('admin.add-edit-employee');
-    }
+{
+    $employees = Employee::with(['user', 'department'])->get();
+
+    $departments = Department::all();
+
+    return view('admin.add-edit-employee', compact('employees', 'departments'));
+}
 
     public function profile()
     {
