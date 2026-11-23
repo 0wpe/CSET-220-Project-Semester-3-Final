@@ -4,9 +4,13 @@
 
 @section('content')
 
-@include('partials.navbar-admin', ['activePage' => 'leave-requests'])
+@include('partials.navbar-admin', ['activePage' => 'leave'])
 
 <style>
+    body {
+        background: #F6F8F7;
+    }
+
     .leave-management {
         max-width: 1100px;
         margin: 35px auto;
@@ -470,7 +474,7 @@
                     type="button"
                     class="collapse-toggle"
                     id="toggle-request-history"
-                    aria-expanded="true"
+                    aria-expanded="false"
                     aria-controls="request-history-body"
                     aria-label="Toggle Request History"
                 >
@@ -481,7 +485,7 @@
             <span class="section-count">{{ $reviewedRequests->count() }} reviewed</span>
         </div>
 
-        <div class="request-history-body" id="request-history-body">
+        <div class="request-history-body is-collapsed" id="request-history-body">
             @forelse ($reviewedRequests as $leaveRequest)
                 @php
                     $employee = $leaveRequest->employee;
