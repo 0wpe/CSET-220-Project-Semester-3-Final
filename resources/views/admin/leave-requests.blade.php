@@ -4,9 +4,13 @@
 
 @section('content')
 
-@include('partials.navbar-admin', ['activePage' => 'leave-requests'])
+@include('partials.navbar-admin', ['activePage' => 'leave'])
 
 <style>
+    body {
+        background: #F6F8F7;
+    }
+
     .leave-management {
         max-width: 1100px;
         margin: 35px auto;
