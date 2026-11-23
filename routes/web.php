@@ -22,6 +22,9 @@ Route::middleware(['auth', 'role:Employee'])
 
         Route::get('/profile', [EmployeeController::class, 'profile']);
 
+        Route::put('/profile', [EmployeeController::class, 'updateProfile'])
+            ->name('employee.profile.update');
+
         Route::get('/time-entry', [EmployeeController::class, 'timeEntry']);
 
         Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
@@ -54,7 +57,21 @@ Route::middleware(['auth', 'role:Admin'])
 
         Route::delete('/employees/{id}', [AdminController::class, 'destroy']);
 
-        Route::get('/profile-view', [AdminController::class, 'profileView']);
+        Route::get('/leave-requests', [LeaveRequestController::class, 'index'])->name('admin.leave-requests.index');
+
+        Route::patch('/leave-requests/{leaveRequest}/status', [LeaveRequestController::class, 'update'])
+            ->name('admin.leave-requests.update-status');
+
+        // Admin's Own Profile
+        Route::get('/profile', [AdminController::class, 'profile'])
+            ->name('admin.profile');
+
+        Route::put('/profile', [AdminController::class, 'updateProfile'])
+            ->name('admin.profile.update');
+
+        // Individual Employee Profile
+        Route::get('/profile-view/{id}', [AdminController::class, 'profileView'])
+            ->name('admin.profile-view');
 
         Route::get('/attendance', [AdminController::class, 'attendance']);
 
