@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\PayrollController;
+use App\Models\Department;
 
 class EmployeeController extends Controller
 {
@@ -98,7 +99,7 @@ class EmployeeController extends Controller
     public function index()
     {
         $employees = Employee::with('user')->get();
-        $departments = DB::table('departments')->get();
+        $departments = Department::all();
 
         return view('admin.add-edit-employee', compact('employees', 'departments'));
     }
