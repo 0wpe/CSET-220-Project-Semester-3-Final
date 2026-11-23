@@ -110,7 +110,7 @@ class EmployeeController extends Controller
             'first_name' => 'required|string|max:100',
             'last_name' => 'required|string|max:100',
             'email' => 'required|email|unique:users,email',
-            'department_id' => 'nullable|exists:departments,id',
+            'department_id' => 'required|exists:departments,department_id',
             'designation' => 'nullable|string|max:255',
             'base_salary' => 'nullable|numeric|min:0',
             'hourly_rate' => 'nullable|numeric|min:0',
@@ -148,7 +148,7 @@ class EmployeeController extends Controller
         $employee = Employee::findOrFail($id);
 
         $validatedData = $request->validate([
-            'department_id' => 'nullable|exists:departments,id',
+            'department_id' => 'required|exists:departments,department_id',
             'designation' => 'nullable|string|max:255',
             'base_salary' => 'nullable|numeric|min:0',
             'hourly_rate' => 'nullable|numeric|min:0',
