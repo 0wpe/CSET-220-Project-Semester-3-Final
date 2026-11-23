@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Models\User;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -41,6 +44,87 @@ class AdminController extends Controller
         return view('admin.profile-view', compact('admin'));
     }
 
+   public function store(Request $request)
+{
+    $validatedData = $request->validate([
+        'first_name' => 'required|string|max:100',
+        'last_name' => 'required|string|max:100',
+        'email' => 'required|email|unique:users,email',
+        'department_id' => 'required|exists:departments,department_id',
+        'designation' => 'nullable|string|max:255',
+        'base_salary' => 'nullable|numeric|min:0',
+        'hourly_rate' => 'nullable|numeric|min:0',
+        'pay_type' => 'required|in:Hourly,Salaried',
+    ]);
+
+    $temporaryPassword = Str::random(12);
+
+    DB::transaction(function () use ($validatedData, $temporaryPassword) {
+
+        $user = User::create([
+            'first_name' => $validatedData['first_name'],
+            'last_name' => $validatedData['last_name'],
+            'email' => $validatedData['email'],
+            'password' => Hash::make($temporaryPassword),
+            'role' => 'employee',
+        ]);
+
+        Employee::create([
+            'user_id' => $user->user_id,
+            'department_id' => $validatedData['department_id'],
+            'designation' => $validatedData['designation'] ?? null,
+            'base_salary' => $validatedData['base_salary'] ?? 0,
+            'hourly_rate' => $validatedData['hourly_rate'] ?? 0,
+            'pay_type' => $validatedData['pay_type'],
+        ]);
+
+    });
+
+    return redirect()->back()
+        ->with('success', 'Employee added successfully.')
+        ->with('temporaryPassword', $temporaryPassword);
+}
+
+    public function update(Request $request, $id)
+{
+    $employee = Employee::with('user')->findOrFail($id);
+
+    $validatedData = $request->validate([
+        'email' => 'required|email|unique:Users,email,' . $employee->user_id . ',user_id',
+        'department_id' => 'required|exists:Departments,department_id',
+        'designation' => 'nullable|string|max:255',
+        'base_salary' => 'nullable|numeric|min:0',
+        'hourly_rate' => 'nullable|numeric|min:0',
+        'pay_type' => 'required|in:Hourly,Salaried',
+        'password' => 'nullable|string|min:8|confirmed',
+    ]);
+
+    DB::transaction(function () use ($employee, $validatedData) {
+
+    $employee->user->update([
+        'email' => $validatedData['email'],
+    ]);
+
+    // Update password only if a new one was entered
+    if (!empty($validatedData['password'])) {
+        $employee->user->update([
+            'password' => Hash::make($validatedData['password'])
+        ]);
+    }
+
+    $employee->update([
+        'department_id' => $validatedData['department_id'],
+        'designation' => $validatedData['designation'],
+        'base_salary' => $validatedData['base_salary'] ?? 0,
+        'hourly_rate' => $validatedData['hourly_rate'] ?? 0,
+        'pay_type' => $validatedData['pay_type'],
+    ]);
+
+});
+
+    return redirect()->back()->with('success', 'Employee updated successfully.');
+}
+
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
@@ -57,6 +141,7 @@ class AdminController extends Controller
             'phone_number' => 'nullable|string|max:20',
             'location' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'password' => 'nullable|string|min:8|confirmed',
         ]);
 
         $profilePicture = $user->profile_picture;
@@ -79,12 +164,49 @@ class AdminController extends Controller
                 'phone_number' => $validated['phone_number'] ?? null,
                 'location' => $validated['location'] ?? null,
                 'profile_picture' => $profilePicture,
+                'password' => 'nullable|string|min:8|confirmed',
             ]);
 
         return redirect()
             ->route('admin.profile')
             ->with('success', 'Profile updated successfully.');
     }
+
+    public function destroy($id)
+{
+    $employee = Employee::with('user')->findOrFail($id);
+
+    DB::transaction(function () use ($employee) {
+
+        DB::table('attendance')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('payroll')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('paychangehistory')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('leaverequest')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('shiftassignments')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        $userId = $employee->user_id;
+
+        $employee->delete();
+
+        User::where('user_id', $userId)->delete();
+    });
+
+    return redirect()->back()->with('success', 'Employee permanently deleted.');
+}
 
     public function profileView($id)
     {

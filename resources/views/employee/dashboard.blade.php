@@ -305,7 +305,7 @@
         </div>
 
         <div class="shift-time">
-            00h 41m
+            00h 00m 00sec
         </div>
 
         <div class="clocked-in-time">
