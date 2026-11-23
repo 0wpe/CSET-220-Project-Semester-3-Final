@@ -303,7 +303,7 @@
                     <div class="week-date">Mon, Nov 9</div>
                     <div class="week-description" id="weeklyStatus">In progress</div>
                 </div>
-                <span class="week-hours" id="weeklyHours">00h 41m</span>
+                <span class="week-hours" id="weeklyHours">00h 00m 00sec</span>
             </div>
 
             <div class="week-row">
