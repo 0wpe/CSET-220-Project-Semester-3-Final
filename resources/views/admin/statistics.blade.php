@@ -217,12 +217,7 @@
         width: 130px;
         height: 130px;
         border-radius: 50%;
-        background: conic-gradient(
-            #176454 0% 40%,
-            #5D9180 40% 60%,
-            #A4C3B5 60% 80%,
-            #D4E3DA 80% 100%
-        );
+        background: {{ $departmentGradient }};
         position: relative;
         margin: auto;
     }
@@ -267,6 +262,24 @@
     .legend-percent {
         color: #176454;
         font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .legend-count {
+        color: #687B74;
+        font-size: 10px;
+        font-weight: 400;
+        margin-left: 4px;
+    }
+
+    .empty-chart {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 120px;
+        color: #687B74;
+        font-size: 12px;
+        text-align: center;
     }
 
     .page-footer {
@@ -324,25 +337,51 @@
     </p>
 
     <!-- Month Selector -->
-    <div class="month-selector">
-        <select aria-label="Select statistics month">
-            <option selected>November 2026</option>
-            <option>October 2026</option>
-            <option>September 2026</option>
+    <form
+        action="{{ url('/admin/statistics') }}"
+        method="GET"
+        class="month-selector"
+    >
+        <select
+            name="month"
+            aria-label="Select statistics month"
+            onchange="this.form.submit()"
+        >
+            @for($i = 0; $i < 12; $i++)
+
+                @php
+                    $optionMonth = now()->startOfMonth()->subMonths($i);
+                    $optionValue = $optionMonth->format('Y-m');
+                @endphp
+
+                <option
+                    value="{{ $optionValue }}"
+                    {{ $month === $optionValue ? 'selected' : '' }}
+                >
+                    {{ $optionMonth->format('F Y') }}
+                </option>
+
+            @endfor
         </select>
-    </div>
+    </form>
 
     <!-- Workforce Summary -->
     <div class="summary-cards">
 
         <div class="summary-card">
             <span class="summary-label">Employees</span>
-            <div class="summary-value">5</div>
+
+            <div class="summary-value">
+                {{ $employeeCount }}
+            </div>
         </div>
 
         <div class="summary-card highlight">
             <span class="summary-label">Avg. attendance</span>
-            <div class="summary-value">91.4%</div>
+
+            <div class="summary-value">
+                {{ number_format($averageAttendance, 1) }}%
+            </div>
         </div>
 
     </div>
@@ -352,12 +391,18 @@
 
         <div>
             <span class="total-label">Present</span>
-            <span class="total-value">32 employee-days</span>
+
+            <span class="total-value">
+                {{ number_format($presentEmployeeDays) }} employee-days
+            </span>
         </div>
 
         <div>
             <span class="total-label">Absent</span>
-            <span class="total-value">3 employee-days</span>
+
+            <span class="total-value">
+                {{ number_format($absentEmployeeDays) }} employee-days
+            </span>
         </div>
 
     </div>
@@ -368,61 +413,127 @@
         <h2 class="chart-heading">Attendance trends</h2>
 
         <p class="chart-subtitle">
-            Daily attendance rate · November 2–10
+            Daily attendance rate · {{ $monthDate->format('F Y') }}
         </p>
 
-        <div class="attendance-chart">
+        @if($attendanceTrends->isNotEmpty())
 
-            <div class="chart-y-labels">
-                <span>100%</span>
-                <span>80%</span>
-                <span>60%</span>
+            @php
+                $chartPoints = [];
+                $chartLabels = [];
+                $chartAreaPoints = [];
+
+                $trendCount = $attendanceTrends->count();
+
+                foreach ($attendanceTrends as $index => $trend) {
+
+                    $x = $trendCount > 1
+                        ? ($index / ($trendCount - 1)) * 280
+                        : 140;
+
+                    $rate = max(60, min(100, $trend['attendance_rate']));
+
+                    $y = ((100 - $rate) / 40) * 120;
+
+                    $chartPoints[] = round($x, 2) . ',' . round($y, 2);
+
+                    $chartAreaPoints[] = round($x, 2) . ',' . round($y, 2);
+
+                    $chartLabels[] = [
+                        'day' => $trend['day'],
+                        'index' => $index,
+                    ];
+                }
+
+                $polylinePoints = implode(' ', $chartPoints);
+
+                $areaPath = 'M' . implode(' L', $chartAreaPoints)
+                    . ' L280,120 L0,120 Z';
+
+                $labelInterval = max(1, ceil($trendCount / 7));
+
+                $visibleLabels = collect($chartLabels)
+                    ->filter(function ($label) use ($labelInterval, $trendCount) {
+                        return $label['index'] % $labelInterval === 0
+                            || $label['index'] === $trendCount - 1;
+                    });
+            @endphp
+
+            <div class="attendance-chart">
+
+                <div class="chart-y-labels">
+                    <span>100%</span>
+                    <span>80%</span>
+                    <span>60%</span>
+                </div>
+
+                <div class="chart-plot">
+
+                    <svg
+                        viewBox="0 0 280 120"
+                        preserveAspectRatio="none"
+                        role="img"
+                        aria-label="Daily attendance trends for {{ $monthDate->format('F Y') }}"
+                    >
+
+                        <path
+                            d="{{ $areaPath }}"
+                            fill="#E7F0EB"
+                        />
+
+                        <polyline
+                            points="{{ $polylinePoints }}"
+                            fill="none"
+                            stroke="#176454"
+                            stroke-width="2.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+
+                        @foreach($chartPoints as $point)
+
+                            @php
+                                [$circleX, $circleY] = explode(',', $point);
+                            @endphp
+
+                            <circle
+                                cx="{{ $circleX }}"
+                                cy="{{ $circleY }}"
+                                r="4"
+                                fill="#176454"
+                                stroke="#FFFFFF"
+                                stroke-width="1.5"
+                            />
+
+                        @endforeach
+
+                    </svg>
+
+                </div>
+
+                <div class="chart-x-labels">
+
+                    @foreach($visibleLabels as $label)
+
+                        <span>{{ $label['day'] }}</span>
+
+                    @endforeach
+
+                </div>
+
             </div>
 
-            <div class="chart-plot">
+        @else
 
-                <svg viewBox="0 0 280 120" preserveAspectRatio="none"
-                     role="img" aria-label="Attendance rates: 100, 100, 80, 100, 100, 80, 80 percent">
-
-                    <path
-                        d="M0 0 L46.7 0 L93.3 40 L140 0 L186.7 0 L233.3 40 L280 40 L280 120 L0 120 Z"
-                        fill="#E7F0EB"
-                    />
-
-                    <polyline
-                        points="0,0 46.7,0 93.3,40 140,0 186.7,0 233.3,40 280,40"
-                        fill="none"
-                        stroke="#176454"
-                        stroke-width="2.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    />
-
-                    <circle cx="0" cy="0" r="4" fill="#176454" stroke="#FFFFFF" stroke-width="1.5"/>
-                    <circle cx="46.7" cy="0" r="4" fill="#176454" stroke="#FFFFFF" stroke-width="1.5"/>
-                    <circle cx="93.3" cy="40" r="4" fill="#176454" stroke="#FFFFFF" stroke-width="1.5"/>
-                    <circle cx="140" cy="0" r="4" fill="#176454" stroke="#FFFFFF" stroke-width="1.5"/>
-                    <circle cx="186.7" cy="0" r="4" fill="#176454" stroke="#FFFFFF" stroke-width="1.5"/>
-                    <circle cx="233.3" cy="40" r="4" fill="#176454" stroke="#FFFFFF" stroke-width="1.5"/>
-                    <circle cx="280" cy="40" r="4" fill="#176454" stroke="#FFFFFF" stroke-width="1.5"/>
-
-                </svg>
-
+            <div class="empty-chart">
+                No attendance records found for this month.
             </div>
 
-            <div class="chart-x-labels">
-                <span>2</span>
-                <span>3</span>
-                <span>4</span>
-                <span>5</span>
-                <span>6</span>
-                <span>9</span>
-                <span>10</span>
-            </div>
+        @endif
 
+        <div class="chart-footer">
+            {{ $monthDate->format('F Y') }}
         </div>
-
-        <div class="chart-footer">November 2026</div>
 
     </div>
 
@@ -432,41 +543,50 @@
         <h2 class="chart-heading">Department distribution</h2>
 
         <p class="chart-subtitle">
-            5 employees · 4 departments
+            {{ $employeeCount }} employees · {{ $departmentCount }} departments
         </p>
 
         <div class="department-content">
 
-            <div class="pie-chart"
-                 role="img"
-                 aria-label="Department distribution: Design 40%, Engineering 20%, Marketing 20%, People 20%">
+            <div
+                class="pie-chart"
+                role="img"
+                aria-label="Department distribution across {{ $departmentCount }} departments"
+            >
             </div>
 
             <div class="department-legend">
 
-                <div class="legend-item">
-                    <span class="legend-swatch" style="background: #176454;"></span>
-                    <span class="legend-name">Design</span>
-                    <span class="legend-percent">40%</span>
-                </div>
+                @forelse($departmentDistribution as $department)
 
-                <div class="legend-item">
-                    <span class="legend-swatch" style="background: #5D9180;"></span>
-                    <span class="legend-name">Engineering</span>
-                    <span class="legend-percent">20%</span>
-                </div>
+                    <div class="legend-item">
 
-                <div class="legend-item">
-                    <span class="legend-swatch" style="background: #A4C3B5;"></span>
-                    <span class="legend-name">Marketing</span>
-                    <span class="legend-percent">20%</span>
-                </div>
+                        <span
+                            class="legend-swatch"
+                            style="background: {{ $department['color'] }};"
+                        ></span>
 
-                <div class="legend-item">
-                    <span class="legend-swatch" style="background: #D4E3DA;"></span>
-                    <span class="legend-name">People</span>
-                    <span class="legend-percent">20%</span>
-                </div>
+                        <span class="legend-name">
+                            {{ $department['name'] }}
+
+                            <span class="legend-count">
+                                ({{ $department['count'] }})
+                            </span>
+                        </span>
+
+                        <span class="legend-percent">
+                            {{ number_format($department['percentage'], 1) }}%
+                        </span>
+
+                    </div>
+
+                @empty
+
+                    <div class="empty-chart">
+                        No departments found.
+                    </div>
+
+                @endforelse
 
             </div>
 
@@ -475,8 +595,10 @@
     </div>
 
     <div class="page-footer">
-        Nov 1–10 · 35 scheduled employee-days
+        {{ $monthDate->format('M 1–') }}{{ $monthDate->daysInMonth }}
+        · {{ number_format($scheduledEmployeeDays) }} scheduled employee-days
     </div>
 
 </div>
+
 @endsection
