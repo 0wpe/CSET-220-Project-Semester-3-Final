@@ -26,7 +26,19 @@ Route::middleware(['auth', 'role:Employee'])
         Route::put('/profile', [EmployeeController::class, 'updateProfile'])
             ->name('employee.profile.update');
 
-        Route::get('/time-entry', [EmployeeController::class, 'timeEntry']);
+        Route::get('/time-entry', [EmployeeController::class, 'timeEntry'])
+            ->name('employee.time-entry');
+        Route::post('/clock-in', [EmployeeController::class, 'clockIn'])
+            ->name('employee.clock-in');
+
+        Route::post('/clock-out', [EmployeeController::class, 'clockOut'])
+            ->name('employee.clock-out');
+
+        Route::post('/start-break', [EmployeeController::class, 'startBreak'])
+            ->name('employee.start-break');
+
+        Route::post('/resume-work', [EmployeeController::class, 'resumeWork'])
+            ->name('employee.resume-work');
 
         Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
 
