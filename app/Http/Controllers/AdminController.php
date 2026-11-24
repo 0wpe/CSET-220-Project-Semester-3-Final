@@ -8,11 +8,14 @@ use App\Models\Admin;
 use App\Models\Schedule;
 use App\Models\Shift;
 use App\Models\ShiftAssignment;
+use App\Models\Department;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
-use App\Models\Department;
+use App\Models\User;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
@@ -22,13 +25,13 @@ class AdminController extends Controller
     }
 
     public function employees()
-{
-    $employees = Employee::with(['user', 'department'])->get();
+    {
+        $employees = Employee::with(['user', 'department'])->get();
 
-    $departments = Department::all();
+        $departments = Department::all();
 
-    return view('admin.add-edit-employee', compact('employees', 'departments'));
-}
+        return view('admin.add-edit-employee', compact('employees', 'departments'));
+    }
 
     public function profile()
     {
@@ -40,6 +43,87 @@ class AdminController extends Controller
 
         return view('admin.profile-view', compact('admin'));
     }
+
+   public function store(Request $request)
+{
+    $validatedData = $request->validate([
+        'first_name' => 'required|string|max:100',
+        'last_name' => 'required|string|max:100',
+        'email' => 'required|email|unique:users,email',
+        'department_id' => 'required|exists:departments,department_id',
+        'designation' => 'nullable|string|max:255',
+        'base_salary' => 'nullable|numeric|min:0',
+        'hourly_rate' => 'nullable|numeric|min:0',
+        'pay_type' => 'required|in:Hourly,Salaried',
+    ]);
+
+    $temporaryPassword = Str::random(12);
+
+    DB::transaction(function () use ($validatedData, $temporaryPassword) {
+
+        $user = User::create([
+            'first_name' => $validatedData['first_name'],
+            'last_name' => $validatedData['last_name'],
+            'email' => $validatedData['email'],
+            'password' => Hash::make($temporaryPassword),
+            'role' => 'employee',
+        ]);
+
+        Employee::create([
+            'user_id' => $user->user_id,
+            'department_id' => $validatedData['department_id'],
+            'designation' => $validatedData['designation'] ?? null,
+            'base_salary' => $validatedData['base_salary'] ?? 0,
+            'hourly_rate' => $validatedData['hourly_rate'] ?? 0,
+            'pay_type' => $validatedData['pay_type'],
+        ]);
+
+    });
+
+    return redirect()->back()
+        ->with('success', 'Employee added successfully.')
+        ->with('temporaryPassword', $temporaryPassword);
+}
+
+    public function update(Request $request, $id)
+{
+    $employee = Employee::with('user')->findOrFail($id);
+
+    $validatedData = $request->validate([
+        'email' => 'required|email|unique:Users,email,' . $employee->user_id . ',user_id',
+        'department_id' => 'required|exists:Departments,department_id',
+        'designation' => 'nullable|string|max:255',
+        'base_salary' => 'nullable|numeric|min:0',
+        'hourly_rate' => 'nullable|numeric|min:0',
+        'pay_type' => 'required|in:Hourly,Salaried',
+        'password' => 'nullable|string|min:8|confirmed',
+    ]);
+
+    DB::transaction(function () use ($employee, $validatedData) {
+
+    $employee->user->update([
+        'email' => $validatedData['email'],
+    ]);
+
+    // Update password only if a new one was entered
+    if (!empty($validatedData['password'])) {
+        $employee->user->update([
+            'password' => Hash::make($validatedData['password'])
+        ]);
+    }
+
+    $employee->update([
+        'department_id' => $validatedData['department_id'],
+        'designation' => $validatedData['designation'],
+        'base_salary' => $validatedData['base_salary'] ?? 0,
+        'hourly_rate' => $validatedData['hourly_rate'] ?? 0,
+        'pay_type' => $validatedData['pay_type'],
+    ]);
+
+});
+
+    return redirect()->back()->with('success', 'Employee updated successfully.');
+}
 
     public function updateProfile(Request $request)
     {
@@ -57,6 +141,7 @@ class AdminController extends Controller
             'phone_number' => 'nullable|string|max:20',
             'location' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'password' => 'nullable|string|min:8|confirmed',
         ]);
 
         $profilePicture = $user->profile_picture;
@@ -79,12 +164,49 @@ class AdminController extends Controller
                 'phone_number' => $validated['phone_number'] ?? null,
                 'location' => $validated['location'] ?? null,
                 'profile_picture' => $profilePicture,
+                'password' => 'nullable|string|min:8|confirmed',
             ]);
 
         return redirect()
             ->route('admin.profile')
             ->with('success', 'Profile updated successfully.');
     }
+
+    public function destroy($id)
+{
+    $employee = Employee::with('user')->findOrFail($id);
+
+    DB::transaction(function () use ($employee) {
+
+        DB::table('attendance')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('payroll')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('paychangehistory')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('leaverequest')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        DB::table('shiftassignments')
+            ->where('employee_id', $employee->employee_id)
+            ->delete();
+
+        $userId = $employee->user_id;
+
+        $employee->delete();
+
+        User::where('user_id', $userId)->delete();
+    });
+
+    return redirect()->back()->with('success', 'Employee permanently deleted.');
+}
 
     public function profileView($id)
     {
@@ -403,8 +525,156 @@ class AdminController extends Controller
         );
     }
 
-    public function statistics()
+    // Workforce Statistics
+
+    public function statistics(Request $request)
     {
-        return view('admin.statistics');
+        $validated = $request->validate([
+            'month' => 'nullable|date_format:Y-m',
+        ]);
+
+        $month = $validated['month'] ?? now()->format('Y-m');
+
+        $monthDate = \Carbon\Carbon::createFromFormat(
+            'Y-m-d',
+            $month . '-01'
+        );
+
+        $startDate = $monthDate->copy()->startOfMonth()->toDateString();
+        $endDate = $monthDate->copy()->endOfMonth()->toDateString();
+
+        // Total employees
+
+        $employeeCount = Employee::count();
+
+        // Department distribution
+
+        $departments = Department::withCount('employees')
+            ->orderBy('department_name')
+            ->get();
+
+        $departmentColors = [
+            '#176454',
+            '#397B6A',
+            '#5D9180',
+            '#79A995',
+            '#A4C3B5',
+            '#D4E3DA',
+            '#467D91',
+            '#6699A8',
+            '#8AB4BE',
+            '#A5C7C5',
+            '#B5A17B',
+            '#D0BD9D',
+        ];
+
+        $departmentDistribution = $departments
+            ->values()
+            ->map(function ($department, $index) use ($employeeCount, $departmentColors) {
+                $employeeTotal = (int) $department->employees_count;
+
+                $percentage = $employeeCount > 0
+                    ? ($employeeTotal / $employeeCount) * 100
+                    : 0;
+
+                return [
+                    'name' => $department->department_name,
+                    'count' => $employeeTotal,
+                    'percentage' => round($percentage, 1),
+                    'color' => $departmentColors[$index % count($departmentColors)],
+                ];
+            });
+
+        // Build the department pie chart gradient
+
+        $gradientStops = [];
+        $gradientPosition = 0;
+
+        foreach ($departmentDistribution as $department) {
+            if ($department['percentage'] <= 0) {
+                continue;
+            }
+
+            $nextPosition = $gradientPosition + $department['percentage'];
+
+            $gradientStops[] = $department['color']
+                . ' '
+                . $gradientPosition
+                . '% '
+                . $nextPosition
+                . '%';
+
+            $gradientPosition = $nextPosition;
+        }
+
+        $departmentGradient = count($gradientStops) > 0
+            ? 'conic-gradient(' . implode(', ', $gradientStops) . ')'
+            : 'conic-gradient(#E7F0EB 0% 100%)';
+
+        $departmentCount = $departments->count();
+
+        // Attendance statistics
+        // Only published schedules are included.
+
+        $dailyAttendance = DB::table('ShiftAssignments as sa')
+            ->join('Shifts as sh', 'sa.shift_id', '=', 'sh.shift_id')
+            ->join('Schedules as sc', 'sh.schedule_id', '=', 'sc.schedule_id')
+            ->leftJoin('Attendance as a', 'sa.assignment_id', '=', 'a.assignment_id')
+            ->where('sc.status', 'Published')
+            ->whereBetween('sh.shift_date', [$startDate, $endDate])
+            ->selectRaw('
+                sh.shift_date as attendance_date,
+                COUNT(DISTINCT sa.employee_id) as scheduled,
+                COUNT(DISTINCT CASE
+                    WHEN a.attendance_id IS NOT NULL THEN sa.employee_id
+                END) as present
+            ')
+            ->groupBy('sh.shift_date')
+            ->orderBy('sh.shift_date')
+            ->get();
+
+        $scheduledEmployeeDays = (int) $dailyAttendance->sum('scheduled');
+        $presentEmployeeDays = (int) $dailyAttendance->sum('present');
+
+        $absentEmployeeDays = max(
+            0,
+            $scheduledEmployeeDays - $presentEmployeeDays
+        );
+
+        $averageAttendance = $scheduledEmployeeDays > 0
+            ? round(($presentEmployeeDays / $scheduledEmployeeDays) * 100, 1)
+            : 0;
+
+        // Daily attendance chart data
+
+        $attendanceTrends = $dailyAttendance->map(function ($day) {
+            $scheduled = (int) $day->scheduled;
+            $present = (int) $day->present;
+
+            return [
+                'date' => \Carbon\Carbon::parse($day->attendance_date)->format('Y-m-d'),
+                'day' => \Carbon\Carbon::parse($day->attendance_date)->day,
+                'scheduled' => $scheduled,
+                'present' => $present,
+                'attendance_rate' => $scheduled > 0
+                    ? round(($present / $scheduled) * 100, 1)
+                    : 0,
+            ];
+        });
+
+        return view('admin.statistics', compact(
+            'month',
+            'monthDate',
+            'employeeCount',
+            'averageAttendance',
+            'presentEmployeeDays',
+            'absentEmployeeDays',
+            'scheduledEmployeeDays',
+            'attendanceTrends',
+            'departments',
+            'departmentCount',
+            'departmentDistribution',
+            'departmentGradient'
+        ));
     }
 }

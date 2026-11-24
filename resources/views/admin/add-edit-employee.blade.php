@@ -177,7 +177,7 @@
         </button>
     </div>
 
-    <form method="POST" action="{{ url('/admin/employees') }}">
+    <form method="POST" action="{{ url('/admin/employees') }}" id="employeeForm">
     @csrf
 
     @if(session('success'))
@@ -206,15 +206,39 @@
 
             <div class="form-grid">
 
-                <div class="field">
-                    <label for="first_name">First name</label>
-                    <input type="text" id="first_name" name="first_name" required>
-                </div>
+                <div class="field full" id="employeeSelectField">
+    <label for="employee_id">Select Employee</label>
 
-                <div class="field">
-                    <label for="last_name">Last name</label>
-                    <input type="text" id="last_name" name="last_name" required>
-                </div>
+    <select id="employee_id" name="employee_id" onchange="loadEmployee()">
+        <option value="">Select an employee</option>
+
+        @foreach($employees as $employee)
+    <option
+        value="{{ $employee->employee_id }}"
+        data-email="{{ $employee->user->email ?? '' }}"
+        data-department="{{ $employee->department_id }}"
+        data-designation="{{ $employee->designation }}"
+        data-pay-type="{{ $employee->pay_type }}"
+        data-salary="{{ $employee->base_salary }}"
+        data-hourly="{{ $employee->hourly_rate }}"
+    >
+        {{ $employee->user->first_name ?? '' }}
+        {{ $employee->user->last_name ?? '' }}
+        (ID: {{ $employee->employee_id }})
+    </option>
+@endforeach
+    </select>
+</div>
+
+<div class="field" id="firstNameField">
+    <label for="first_name">First name</label>
+    <input type="text" id="first_name" name="first_name">
+</div>
+
+<div class="field" id="lastNameField">
+    <label for="last_name">Last name</label>
+    <input type="text" id="last_name" name="last_name">
+</div>
 
                 
 
@@ -222,7 +246,20 @@
                     <label for="email">Work email</label>
                     <input type="email" id="email" name="email" required>
                 </div>
+<div class="field" id="passwordField">
+    <label for="password">New Password</label>
+    <input type="password" id="password" name="password"
+           placeholder="Enter new password"
+           autocomplete="new-password">
+</div>
 
+<div class="field" id="passwordConfirmField">
+    <label for="password_confirmation">Confirm Password</label>
+    <input type="password" id="password_confirmation"
+           name="password_confirmation"
+           placeholder="Confirm new password"
+           autocomplete="new-password">
+</div>
             </div>
 
         </section>
@@ -248,9 +285,21 @@
     </select>
 </div>
 
-                <div class="field">
+               <div class="field">
     <label for="designation">Designation</label>
-    <input type="text" id="designation" name="designation" placeholder="Enter designation" required>
+    <select id="designation" name="designation" required>
+        <option value="">Select designation</option>
+        <option value="Manager">Manager</option>
+        <option value="HR Specialist">HR Specialist</option>
+        <option value="Accountant">Accountant</option>
+        <option value="Software Developer">Software Developer</option>
+        <option value="IT Support Specialist">IT Support Specialist</option>
+        <option value="Sales Associate">Sales Associate</option>
+        <option value="Marketing Specialist">Marketing Specialist</option>
+        <option value="Customer Service Representative">Customer Service Representative</option>
+        <option value="Administrative Assistant">Administrative Assistant</option>
+        <option value="Other">Other</option>
+    </select>
 </div>
 
                 <div class="field full">
@@ -266,6 +315,7 @@
                 <div class="field full">
                     <label>Employment type</label>
 
+                    <input type="hidden" name="pay_type" id="pay_type" value="Salaried">
                     <div class="pay-switch">
                         <button type="button" id="hourlyMode" onclick="setPayType('hourly')">
                             Hourly
@@ -286,41 +336,153 @@
 
         </section>
 
-        <button type="submit" class="save-button">
-            Save employee
-        </button>
+        <div class="button-group">
+
+    <button type="submit" class="save-button">
+        Save employee
+    </button>
+
+    <button type="button"
+            class="delete-button"
+            id="deleteEmployeeButton"
+            onclick="deleteEmployee()"
+            style="display: none;">
+        Delete employee
+    </button>
+
+</div>
 
     </form>
 
 </div>
 
 <script>
-    function setMode(mode) {
-    document.getElementById('addMode').classList.toggle('active', mode === 'add');
-    document.getElementById('editMode').classList.toggle('active', mode === 'edit');
+   function setMode(mode) {
+    const isAdd = mode === 'add';
 
-    if (mode === 'add') {
+    const form = document.getElementById('employeeForm');
+const employeeDropdown = document.getElementById('employee_id');
+
+if (isAdd) {
+    form.action = "{{ url('/admin/employees') }}";
+    document.getElementById('methodOverride')?.remove();
+} else {
+    if (!document.getElementById('methodOverride')) {
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.id = 'methodOverride';
+        methodInput.value = 'PUT';
+        form.appendChild(methodInput);
+    }
+
+    if (employeeDropdown.value) {
+        form.action = "{{ url('/admin/employees') }}/" + employeeDropdown.value;
+    }
+}
+
+    document.getElementById('addMode').classList.toggle('active', isAdd);
+    document.getElementById('editMode').classList.toggle('active', !isAdd);
+
+    // Show or hide employee dropdown
+    document.getElementById('employeeSelectField').style.display =
+        isAdd ? 'none' : 'flex';
+
+    // Show or hide first and last name
+    document.getElementById('firstNameField').style.display =
+        isAdd ? 'flex' : 'none';
+
+    document.getElementById('lastNameField').style.display =
+        isAdd ? 'flex' : 'none';
+
+    // Clear fields when switching to Add mode
+    if (isAdd) {
         document.getElementById('first_name').value = '';
         document.getElementById('last_name').value = '';
         document.getElementById('email').value = '';
         document.getElementById('designation').value = '';
         document.getElementById('salary').value = '';
         document.getElementById('department').value = '';
+        document.getElementById('employee_id').value = '';
     }
+    document.getElementById('first_name').disabled = !isAdd;
+    document.getElementById('last_name').disabled = !isAdd;
+    document.getElementById('passwordField').style.display = isAdd ? 'none' : 'flex';
+    document.getElementById('passwordConfirmField').style.display = isAdd ? 'none' : 'flex';
+    document.getElementById('deleteEmployeeButton').style.display =
+    isAdd ? 'none' : 'block';
 }
 
-    function setPayType(type) {
-        document.getElementById('hourlyMode').classList.toggle('active', type === 'hourly');
-        document.getElementById('salaryMode').classList.toggle('active', type === 'salary');
+function loadEmployee() {
+    const dropdown = document.getElementById('employee_id');
+    const selected = dropdown.options[dropdown.selectedIndex];
 
-        document.getElementById('salaryLabel').textContent =
-            type === 'hourly' ? 'Hourly rate (USD)' : 'Monthly salary (USD)';
+    if (!dropdown.value) {
+        return;
     }
+    document.getElementById('employeeForm').action =
+    "{{ url('/admin/employees') }}/" + dropdown.value;
+
+    document.getElementById('email').value = selected.dataset.email;
+    document.getElementById('department').value = selected.dataset.department;
+    document.getElementById('designation').value = selected.dataset.designation;
+
+    const payType = selected.dataset.payType;
+
+    setPayType(payType.toLowerCase() === 'hourly' ? 'hourly' : 'salary');
+
+    document.getElementById('salary').value =
+        payType.toLowerCase() === 'hourly'
+            ? selected.dataset.hourly
+            : selected.dataset.salary;
+}
+
+setMode('add');
+
+    function setPayType(type) {
+    document.getElementById('hourlyMode').classList.toggle('active', type === 'hourly');
+    document.getElementById('salaryMode').classList.toggle('active', type === 'salary');
+
+    document.getElementById('salaryLabel').textContent =
+        type === 'hourly' ? 'Hourly rate (USD)' : 'Monthly salary (USD)';
+
+    document.getElementById('pay_type').value =
+        type === 'hourly' ? 'Hourly' : 'Salaried';
+
+    document.getElementById('salary').name =
+        type === 'hourly' ? 'hourly_rate' : 'base_salary';
+}
 
     function saveEmployee(event) {
         event.preventDefault();
         alert('Employee form is ready. Saving will be available when the backend is connected.');
         return false;
     }
+
+function deleteEmployee() {
+    const employeeId = document.getElementById('employee_id').value;
+
+    if (!employeeId) {
+        alert('Please select an employee first.');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to permanently delete this employee? This action cannot be undone.')) {
+        return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url('/admin/employees') }}/" + employeeId;
+
+    form.innerHTML = `
+        @csrf
+        @method('DELETE')
+    `;
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
 </script>
 @endsection
