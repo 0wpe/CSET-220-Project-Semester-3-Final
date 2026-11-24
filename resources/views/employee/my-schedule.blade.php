@@ -383,11 +383,34 @@
             gap: 4px;
         }
     }
+
+    .back-button {
+    display: inline-block;
+    margin-bottom: 20px;
+    padding: 9px 16px;
+    border: 1px solid #dce5e1;
+    border-radius: 8px;
+    color: #176b5b;
+    background: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.back-button:hover {
+    background: #eaf3ef;
+    color: #14594d;
+}
 </style>
 
 @include('partials.navbar', ['activePage' => 'time'])
 
 <main class="schedule-page">
+
+<a href="{{ route('employee.time-entry') }}" class="back-button">
+    ← Back to Time Entry
+</a>
 
     <div class="eyebrow">
         MY TIME · PUBLISHED

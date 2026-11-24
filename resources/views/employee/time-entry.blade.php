@@ -81,6 +81,12 @@
             margin-top: 30px;
         }
 
+        .break-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 14px;
+        }
+
         .timer-button {
             min-height: 50px;
             border-radius: 12px;
@@ -251,23 +257,62 @@
         <p class="page-subtitle">Stay on top of your working hours.</p>
 
         <section class="timer-card">
-            <span class="status" id="clockStatus">On the clock</span>
+            <span class="status" id="clockStatus">Not Clocked In</span>
 
-            <div class="timer" id="timer">00:41:00</div>
+            <div class="timer" id="timer">00:00:00</div>
 
             <p class="timer-description" id="timerDescription">
                 Clocked in today at 09:00 AM
             </p>
 
-            <div class="timer-actions">
-                <button type="button" class="timer-button" id="clockInButton" disabled>
-                    Clock-In
-                </button>
+            
+        <div class="timer-actions">
+    @if(!$attendance || $attendance->clock_out)
+        <form method="POST" action="{{ route('employee.clock-in') }}">
+            @csrf
+            <button type="submit" class="timer-button" id="clockInButton">
+                Clock-In
+            </button>
+        </form>
+    @else
+        <button type="button" class="timer-button" id="clockInButton" disabled>
+            Clock-In
+        </button>
+    @endif
 
-                <button type="button" class="timer-button primary" id="clockOutButton">
-                    Clock-Out
+    @if($attendance && !$attendance->clock_out)
+        <form method="POST" action="{{ route('employee.clock-out') }}">
+            @csrf
+            <button type="submit" class="timer-button primary" id="clockOutButton">
+                Clock-Out
+            </button>
+        </form>
+    @else
+        <button type="button" class="timer-button primary" id="clockOutButton" disabled>
+            Clock-Out
+        </button>
+    @endif
+</div>
+
+@if($attendance && !$attendance->clock_out)
+    <div class="break-actions">
+        @if($isOnBreak)
+            <form method="POST" action="{{ route('employee.resume-work') }}">
+                @csrf
+                <button type="submit" class="timer-button">
+                    Resume Work
                 </button>
-            </div>
+            </form>
+        @else
+            <form method="POST" action="{{ route('employee.start-break') }}">
+                @csrf
+                <button type="submit" class="timer-button">
+                    Start Break
+                </button>
+            </form>
+        @endif
+    </div>
+@endif
         </section>
 
         <div class="section-heading">
@@ -327,113 +372,188 @@
     </main>
 
     <script>
-        let elapsedSeconds = 0;
-        let isClockedIn = true;
-        let clockInTimestamp = Date.now() - elapsedSeconds * 1000;
-        let timerInterval = null;
+    const savedClockInTimestamp = @json(
+    $attendance && !$attendance->clock_out
+        ? $attendance->clock_in->timestamp * 1000
+        : null
+);
 
-        const timer = document.getElementById('timer');
-        const clockStatus = document.getElementById('clockStatus');
-        const timerDescription = document.getElementById('timerDescription');
-        const clockInButton = document.getElementById('clockInButton');
-        const clockOutButton = document.getElementById('clockOutButton');
-        const clockInTime = document.getElementById('clockInTime');
-        const clockOutTime = document.getElementById('clockOutTime');
-        const activityBadge = document.getElementById('activityBadge');
-        const activityTitle = document.getElementById('activityTitle');
-        const weeklyHours = document.getElementById('weeklyHours');
-        const weeklyStatus = document.getElementById('weeklyStatus');
+const savedShiftStartTimestamp = @json(
+    $attendance
+        ? $attendance->clock_in->timestamp * 1000
+        : null
+);
 
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const remainingSeconds = seconds % 60;
+const savedBreakMinutes = @json($attendance ? $attendance->break_minutes : 0);
 
-            return [
-                String(hours).padStart(2, '0'),
-                String(minutes).padStart(2, '0'),
-                String(remainingSeconds).padStart(2, '0')
-            ].join(':');
+const isOnBreak = @json($isOnBreak);
+
+const breakStartedTimestamp = @json(
+    $isOnBreak
+        ? session()->get('break_started_at_' . $attendance->employee_id) * 1000
+        : null
+);
+
+const savedClockOutTimestamp = @json(
+    $attendance && $attendance->clock_out
+        ? $attendance->clock_out->timestamp * 1000
+        : null
+);
+
+let clockInTimestamp = savedClockInTimestamp;
+let isClockedIn = clockInTimestamp !== null;
+let elapsedSeconds = 0;
+let timerInterval = null;
+
+const timer = document.getElementById('timer');
+const clockStatus = document.getElementById('clockStatus');
+const timerDescription = document.getElementById('timerDescription');
+const clockInButton = document.getElementById('clockInButton');
+const clockOutButton = document.getElementById('clockOutButton');
+const clockInTime = document.getElementById('clockInTime');
+const clockOutTime = document.getElementById('clockOutTime');
+const activityBadge = document.getElementById('activityBadge');
+const activityTitle = document.getElementById('activityTitle');
+const weeklyHours = document.getElementById('weeklyHours');
+const weeklyStatus = document.getElementById('weeklyStatus');
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+
+    return [
+        String(hours).padStart(2, '0'),
+        String(minutes).padStart(2, '0'),
+        String(remainingSeconds).padStart(2, '0')
+    ].join(':');
+}
+
+function formatHoursMinutes(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    return String(hours).padStart(2, '0') + 'h ' +
+        String(minutes).padStart(2, '0') + 'm';
+}
+
+function formatClockTime(date) {
+    return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function updateTimer() {
+    if (isClockedIn) {
+        let totalSeconds = Math.floor(
+            (Date.now() - clockInTimestamp) / 1000
+        );
+
+        let breakSeconds = savedBreakMinutes * 60;
+
+        if (isOnBreak && breakStartedTimestamp !== null) {
+            breakSeconds += Math.floor(
+                (Date.now() - breakStartedTimestamp) / 1000
+            );
         }
 
-        function formatHoursMinutes(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
+        elapsedSeconds = Math.max(0, totalSeconds - breakSeconds);
+    }
 
-            return String(hours).padStart(2, '0') + 'h ' +
-                String(minutes).padStart(2, '0') + 'm';
-        }
+    timer.textContent = formatTime(elapsedSeconds);
 
-        function formatClockTime(date) {
-            return date.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
+    if (weeklyHours) {
+        weeklyHours.textContent = formatHoursMinutes(elapsedSeconds);
+    }
+}
 
-        function updateTimer() {
-            if (isClockedIn) {
-                elapsedSeconds = Math.floor((Date.now() - clockInTimestamp) / 1000);
-            }
+function startTimer() {
+    clearInterval(timerInterval);
 
-            timer.textContent = formatTime(elapsedSeconds);
-            weeklyHours.textContent = formatHoursMinutes(elapsedSeconds);
-        }
+    updateTimer();
 
-        function startTimer() {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(updateTimer, 1000);
-            updateTimer();
-        }
+    timerInterval = setInterval(updateTimer, 1000);
+}
 
-        clockInButton.addEventListener('click', function () {
-            if (isClockedIn) return;
+// Set the page based on the saved attendance record
+if (isClockedIn) {
+    const startTime = new Date(clockInTimestamp);
+    const currentTime = formatClockTime(startTime);
 
-            isClockedIn = true;
-            elapsedSeconds = 0;
-            clockInTimestamp = Date.now();
+       if (isOnBreak) {
+    clockStatus.textContent = 'On Break';
+    timerDescription.textContent = 'You are currently on break.';
+} else {
+    clockStatus.textContent = 'On the clock';
+    timerDescription.textContent = 'Clocked in today at ' + currentTime;
+}
 
-            const currentTime = formatClockTime(new Date());
+    if (clockInTime) {
+        clockInTime.textContent = currentTime;
+    }
 
-            clockStatus.textContent = 'On the clock';
-            timerDescription.textContent = 'Clocked in today at ' + currentTime;
-            clockInTime.textContent = currentTime;
-            clockOutTime.textContent = 'Not yet recorded';
+    if (clockOutTime) {
+        clockOutTime.textContent = 'Not yet recorded';
+    }
 
-            activityBadge.textContent = 'IN';
-            activityTitle.textContent = 'Clocked in';
+    if (activityBadge) activityBadge.textContent = 'IN';
+    if (activityTitle) activityTitle.textContent = 'Clocked in';
+    if (weeklyStatus) weeklyStatus.textContent = 'In progress';
 
-            clockInButton.disabled = true;
-            clockOutButton.disabled = false;
-            weeklyStatus.textContent = 'In progress';
+    clockInButton.disabled = true;
+    clockOutButton.disabled = false;
 
-            startTimer();
-        });
+    startTimer();
 
-        clockOutButton.addEventListener('click', function () {
-            if (!isClockedIn) return;
+} else if (savedClockOutTimestamp !== null) {
+    const startTime = new Date(@json(
+        $attendance ? $attendance->clock_in->timestamp * 1000 : null
+    ));
 
-            elapsedSeconds = Math.floor((Date.now() - clockInTimestamp) / 1000);
-            isClockedIn = false;
+    const endTime = new Date(savedClockOutTimestamp);
+    clearInterval(timerInterval);
 
-            const currentTime = formatClockTime(new Date());
+elapsedSeconds = Math.max(
+    0,
+    Math.floor(
+        (savedClockOutTimestamp - savedShiftStartTimestamp) / 1000
+    ) - (savedBreakMinutes * 60)
+);
 
-            clockStatus.textContent = 'Shift complete';
-            timerDescription.textContent = 'Clocked out at ' + currentTime;
-            clockOutTime.textContent = currentTime;
+    clockStatus.textContent = 'Shift complete';
+    timerDescription.textContent = 'Clocked out at ' + formatClockTime(endTime);
 
-            activityBadge.textContent = 'OUT';
-            activityTitle.textContent = 'Clocked out';
+    if (clockInTime) {
+        clockInTime.textContent = formatClockTime(startTime);
+    }
 
-            clockInButton.disabled = false;
-            clockOutButton.disabled = true;
-            weeklyStatus.textContent = 'Completed';
+    if (clockOutTime) {
+        clockOutTime.textContent = formatClockTime(endTime);
+    }
 
-            updateTimer();
-            clearInterval(timerInterval);
-        });
+    if (activityBadge) activityBadge.textContent = 'OUT';
+    if (activityTitle) activityTitle.textContent = 'Clocked out';
+    if (weeklyStatus) weeklyStatus.textContent = 'Completed';
 
-        startTimer();
+    clockInButton.disabled = false;
+    clockOutButton.disabled = true;
+
+    updateTimer();
+
+} else {
+    clockStatus.textContent = 'Not Clocked In';
+    timerDescription.textContent = 'You have not clocked in yet.';
+
+    if (activityBadge) activityBadge.textContent = 'OUT';
+    if (activityTitle) activityTitle.textContent = 'Not clocked in';
+    if (weeklyStatus) weeklyStatus.textContent = 'Not started';
+
+    clockInButton.disabled = false;
+    clockOutButton.disabled = true;
+
+    updateTimer();
+}
     </script>
 @endsection
