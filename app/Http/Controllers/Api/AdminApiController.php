@@ -489,7 +489,7 @@ class AdminApiController extends Controller
     }
 
     /**
-     * Update an existing shift on a Draft schedule.
+     * Update an existing shift on a Draft schedule using only provided fields.
      */
     public function updateShift(Request $request, $shiftId): JsonResponse
     {
@@ -498,15 +498,20 @@ class AdminApiController extends Controller
         $this->ensureDraftSchedule($shift->schedule);
 
         $validated = $request->validate([
-            'shift_date' => 'required|date_format:Y-m-d',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i',
-            'break_minutes' => 'required|integer|min:0',
+            'shift_date' => 'sometimes|required|date_format:Y-m-d',
+            'start_time' => 'sometimes|required|date_format:H:i',
+            'end_time' => 'sometimes|required|date_format:H:i',
+            'break_minutes' => 'sometimes|required|integer|min:0',
         ]);
 
-        $this->ensureDateWithinScheduleMonth($validated['shift_date'], $shift->schedule);
+        $shiftDate = $validated['shift_date'] ?? \Carbon\Carbon::parse($shift->shift_date)->format('Y-m-d');
+        $startTime = $validated['start_time'] ?? substr((string) $shift->start_time, 0, 5);
+        $endTime = $validated['end_time'] ?? substr((string) $shift->end_time, 0, 5);
+        $breakMinutes = $validated['break_minutes'] ?? $shift->break_minutes;
 
-        if (strtotime($validated['end_time']) <= strtotime($validated['start_time'])) {
+        $this->ensureDateWithinScheduleMonth($shiftDate, $shift->schedule);
+
+        if (strtotime($endTime) <= strtotime($startTime)) {
             return response()->json([
                 'message' => 'Validation failed.',
                 'errors' => [
@@ -516,10 +521,10 @@ class AdminApiController extends Controller
         }
 
         $shift->update([
-            'shift_date' => $validated['shift_date'],
-            'start_time' => $validated['start_time'],
-            'end_time' => $validated['end_time'],
-            'break_minutes' => $validated['break_minutes'],
+            'shift_date' => $shiftDate,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
+            'break_minutes' => $breakMinutes,
         ]);
 
         return response()->json([
