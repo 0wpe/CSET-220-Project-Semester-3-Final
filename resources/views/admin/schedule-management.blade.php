@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Schedule Management')
@@ -12,36 +11,49 @@
     }
 
     body {
+        margin: 0;
         background: #F6F8F7;
-        font-family: 'Inter', sans-serif;
+        font-family: 'Inter', Arial, sans-serif;
         color: #172E29;
     }
 
     .schedule-page {
-        width: min(100% - 32px, 900px);
-        margin: 32px auto;
-        padding-bottom: 40px;
+        width: 100%;
+        min-width: 0;
+        padding: clamp(22px, 3vw, 44px) clamp(18px, 3vw, 55px);
+    }
+
+    /* Page heading */
+
+    .schedule-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
     }
 
     .eyebrow {
+        margin-bottom: 8px;
         color: #176454;
         font-size: 11px;
-        font-weight: 600;
-        letter-spacing: .4px;
-        margin-bottom: 8px;
+        font-weight: 700;
+        letter-spacing: .8px;
     }
 
     .page-title {
-        font-size: 28px;
-        font-weight: 600;
-        line-height: 1.45;
         margin: 0;
+        color: #172E29;
+        font-size: clamp(27px, 2.3vw, 36px);
+        font-weight: 650;
+        line-height: 1.2;
     }
 
     .page-subtitle {
+        margin: 8px 0 0;
         color: #687B74;
         font-size: 13px;
-        margin: 4px 0 20px;
     }
 
     .schedule-actions {
@@ -49,111 +61,149 @@
         align-items: center;
         flex-wrap: wrap;
         gap: 12px;
-        margin-bottom: 20px;
+        margin-bottom: 24px;
     }
 
     .new-schedule-btn {
-        background: #FFFFFF;
+        min-height: 42px;
+        padding: 10px 17px;
         border: 1px solid #DFE7E2;
-        border-radius: 12px;
-        padding: 10px 18px;
-        color: #172E29;
-        font-size: 13px;
-        font-weight: 600;
+        border-radius: 9px;
+        background: #FFFFFF;
+        color: #176454;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 650;
         cursor: pointer;
+        transition: .2s ease;
     }
 
     .new-schedule-btn:hover {
         border-color: #176454;
+        background: #E7F0EB;
     }
 
     .draft-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 13px;
+        border: 1px solid #DCE9E1;
+        border-radius: 20px;
         background: #E7F0EB;
         color: #176454;
-        border-radius: 13px;
-        padding: 6px 14px;
-        font-size: 10px;
-        font-weight: 500;
+        font-size: 11px;
+        font-weight: 650;
     }
 
-    .section-heading {
-        font-size: 17px;
-        font-weight: 600;
-        margin: 28px 0 12px;
+    /* Alerts */
+
+    .alert,
+    .alert-validation {
+        margin-bottom: 16px;
+        padding: 13px 16px;
+        border-radius: 10px;
+        font-size: 12px;
+        line-height: 1.5;
     }
+
+    .alert-success {
+        background: #E7F0EB;
+        border-left: 4px solid #176454;
+        color: #176454;
+    }
+
+    .alert-error,
+    .alert-validation {
+        background: #FCE8E8;
+        border-left: 4px solid #B42318;
+        color: #B42318;
+    }
+
+    /* Calendar */
 
     .calendar-card {
+        margin-bottom: 30px;
+        padding: clamp(17px, 2vw, 27px);
         background: #FFFFFF;
-        border-radius: 20px;
-        padding: 16px;
-        margin-bottom: 28px;
+        border: 1px solid #E3EAE7;
+        border-radius: 17px;
+        box-shadow: 0 3px 12px rgba(23, 46, 41, .035);
     }
 
     .calendar-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 22px;
+        gap: 15px;
+        margin-bottom: 23px;
     }
 
     .calendar-header h2 {
-        font-size: 16px;
-        font-weight: 600;
         margin: 0;
+        color: #172E29;
+        font-size: 18px;
+        font-weight: 650;
+        text-align: center;
     }
 
     .month-btn {
-        width: 36px;
-        height: 34px;
-        border: none;
-        border-radius: 9px;
-        background: #F6F8F7;
-        color: #176454;
-        font-size: 22px;
-        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        width: 39px;
+        height: 37px;
+        flex-shrink: 0;
+        border: 1px solid #E3EAE7;
+        border-radius: 9px;
+        background: #F6F8F7;
+        color: #176454;
+        font-size: 23px;
         text-decoration: none;
+        transition: .2s ease;
     }
 
     .month-btn:hover {
         background: #E7F0EB;
+        border-color: #C9DCD1;
     }
 
     .calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 4px 6px;
+        gap: 8px;
     }
 
     .weekday {
+        padding-bottom: 9px;
+        color: #71817C;
+        font-size: 11px;
+        font-weight: 700;
         text-align: center;
-        color: #687B74;
-        font-size: 10px;
-        font-weight: 600;
-        padding-bottom: 8px;
     }
 
     .calendar-day {
-        min-height: 44px;
-        border-radius: 8px;
-        background: #E7F0EB;
-        color: #172E29;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2px;
-        font-size: 12px;
-        font-weight: 500;
+        gap: 5px;
+        min-width: 0;
+        min-height: 62px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: #E7F0EB;
+        color: #172E29;
+        font-size: 13px;
+        font-weight: 650;
         text-decoration: none;
+        transition: .15s ease;
     }
 
     .calendar-day small {
-        font-size: 8px;
         color: #176454;
-        font-weight: 500;
+        font-size: 9px;
+        font-weight: 550;
     }
 
     .calendar-day.off {
@@ -162,13 +212,14 @@
     }
 
     .calendar-day.off small {
-        color: #687B74;
+        color: #71817C;
     }
 
     .calendar-day.selected {
+        border-color: #176454;
         background: #176454;
         color: #FFFFFF;
-        font-weight: 600;
+        box-shadow: 0 3px 8px rgba(23, 100, 84, .18);
     }
 
     .calendar-day.selected small {
@@ -177,53 +228,71 @@
 
     .calendar-day.empty {
         background: transparent;
+        border-color: transparent;
+        pointer-events: none;
     }
 
     .calendar-day:not(.empty):hover {
-        outline: 1px solid #176454;
+        border-color: #176454;
+        transform: translateY(-1px);
     }
 
     .calendar-note {
-        color: #687B74;
-        font-size: 10px;
-        margin: 14px 0 0;
+        margin: 17px 0 0;
+        color: #71817C;
+        font-size: 11px;
     }
 
+    /* Selected day */
+
     .selected-day-heading {
-        margin-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0 0 17px;
     }
 
     .selected-day-heading h2 {
-        font-size: 17px;
-        font-weight: 600;
         margin: 0 0 5px;
+        color: #172E29;
+        font-size: 19px;
+        font-weight: 650;
     }
 
     .selected-day-heading p {
+        margin: 0;
         color: #687B74;
         font-size: 12px;
-        margin: 0;
     }
 
+    /* Shift cards */
+
     .shift-card {
+        margin-bottom: 15px;
+        padding: clamp(17px, 2vw, 25px);
         background: #FFFFFF;
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 12px;
+        border: 1px solid #E3EAE7;
+        border-radius: 15px;
+        box-shadow: 0 2px 8px rgba(23, 46, 41, .025);
     }
 
     .shift-card-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 18px;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #E9EFEC;
     }
 
     .shift-card-header h3 {
-        font-size: 14px;
-        font-weight: 600;
         margin: 0;
+        color: #172E29;
+        font-size: 15px;
+        font-weight: 650;
     }
 
     .employee-count {
@@ -234,58 +303,83 @@
 
     .time-fields {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 16px;
-        margin-bottom: 16px;
+        margin-bottom: 18px;
+    }
+
+    .field-group {
+        min-width: 0;
     }
 
     .field-group label {
         display: block;
+        margin-bottom: 7px;
         color: #687B74;
-        font-size: 10px;
-        font-weight: 500;
-        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 600;
     }
 
     .field-group input,
     .field-group select {
         width: 100%;
-        height: 36px;
+        min-width: 0;
+        height: 42px;
+        padding: 0 11px;
         border: 1px solid #DFE7E2;
-        border-radius: 10px;
-        padding: 0 10px;
-        color: #172E29;
+        border-radius: 8px;
         background: #FFFFFF;
+        color: #172E29;
         font-family: inherit;
         font-size: 13px;
     }
+
+    .field-group input:focus,
+    .field-group select:focus {
+        outline: none;
+        border-color: #176454;
+        box-shadow: 0 0 0 3px rgba(23, 100, 84, .08);
+    }
+
+    /* Employee assignments */
 
     .assignments {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 12px;
+        margin: 4px 0 17px;
     }
 
     .assignment-tag {
         display: inline-flex;
         align-items: center;
         gap: 10px;
+        padding: 7px 11px;
+        border: 1px solid #DCE9E1;
+        border-radius: 20px;
         background: #E7F0EB;
         color: #176454;
-        border-radius: 13px;
-        padding: 6px 10px;
         font-size: 11px;
-        font-weight: 500;
+        font-weight: 600;
     }
 
     .assignment-tag button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        padding: 0;
         border: none;
+        border-radius: 50%;
         background: transparent;
         color: #176454;
-        font-size: 14px;
+        font-size: 16px;
         cursor: pointer;
-        padding: 0;
+    }
+
+    .assignment-tag button:hover {
+        background: rgba(23, 100, 84, .12);
     }
 
     .assignment-tag form {
@@ -295,160 +389,156 @@
 
     .shift-actions {
         display: flex;
-        align-items: center;
+        align-items: flex-end;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 12px;
     }
 
     .text-btn {
+        padding: 9px 4px;
         border: none;
         background: transparent;
         color: #176454;
         font-family: inherit;
         font-size: 12px;
-        font-weight: 600;
-        padding: 8px 4px;
+        font-weight: 650;
         cursor: pointer;
         text-decoration: none;
     }
 
+    .text-btn:hover {
+        color: #124F43;
+        text-decoration: underline;
+    }
+
     .text-btn.remove {
-        color: #687B74;
-        font-weight: 500;
+        color: #9B5550;
+        font-weight: 550;
     }
 
-    .compact-shift {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 12px;
-        background: #FFFFFF;
-        border-radius: 16px;
-        padding: 14px 16px;
-        margin-bottom: 12px;
+    .text-btn.remove:hover {
+        color: #B42318;
     }
 
-    .compact-shift h3 {
-        font-size: 13px;
-        font-weight: 600;
-        margin: 0 0 5px;
-    }
-
-    .compact-shift p {
-        color: #687B74;
-        font-size: 12px;
-        margin: 0;
-    }
-
-    .compact-actions {
-        display: flex;
-        gap: 8px;
-    }
-
-    .compact-actions button {
-        border: none;
-        background: transparent;
-        border-radius: 6px;
-        padding: 7px;
-        font-family: inherit;
-        font-size: 11px;
-        font-weight: 600;
-        cursor: pointer;
-        color: #176454;
-    }
-
-    .compact-actions button:last-child {
-        color: #687B74;
-        font-weight: 500;
-    }
-
-    .add-shift {
-        margin: 4px 0 18px;
-    }
-
-    .bottom-actions {
-        display: flex;
-        gap: 12px;
-    }
-
-    .save-btn,
-    .publish-btn {
-        height: 49px;
-        border-radius: 12px;
-        font-family: inherit;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-    }
-
-    .save-btn {
-        flex: 1;
-        background: #FFFFFF;
-        border: 1px solid #DFE7E2;
-        color: #172E29;
-    }
-
-    .publish-btn {
-        flex: 1.6;
-        background: #176454;
-        border: 1px solid #176454;
-        color: #FFFFFF;
-    }
+    /* Empty states */
 
     .empty-state {
+        margin-bottom: 16px;
+        padding: 35px 20px;
+        border: 1px dashed #C9D8D0;
+        border-radius: 14px;
         background: #FFFFFF;
-        border-radius: 16px;
-        padding: 30px 18px;
-        text-align: center;
         color: #687B74;
         font-size: 12px;
-        margin-bottom: 16px;
+        text-align: center;
     }
 
     .empty-state strong {
         display: block;
+        margin-bottom: 7px;
         color: #172E29;
         font-size: 14px;
-        margin-bottom: 7px;
+        font-weight: 650;
+    }
+
+    /* Schedule action buttons */
+
+    .bottom-actions {
+        display: flex;
+        gap: 12px;
+        margin: 22px 0 30px;
+    }
+
+    .save-btn,
+    .publish-btn {
+        min-height: 47px;
+        border-radius: 9px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 650;
+        cursor: pointer;
+        transition: .2s ease;
+    }
+
+    .save-btn {
+        flex: 1;
+        border: 1px solid #D8E3DD;
+        background: #FFFFFF;
+        color: #176454;
+    }
+
+    .save-btn:hover {
+        border-color: #176454;
+        background: #E7F0EB;
+    }
+
+    .publish-btn {
+        flex: 1.6;
+        border: 1px solid #176454;
+        background: #176454;
+        color: #FFFFFF;
+    }
+
+    .publish-btn:hover {
+        background: #124F43;
+    }
+
+    /* Schedule history */
+
+    .section-heading {
+        margin: 34px 0 16px;
+        color: #172E29;
+        font-size: 19px;
+        font-weight: 650;
     }
 
     .history-card {
-        background: #FFFFFF;
-        border-radius: 16px;
-        padding: 16px;
-        margin-bottom: 12px;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 15px;
+        margin-bottom: 11px;
+        padding: 19px 21px;
+        border: 1px solid #E3EAE7;
+        border-radius: 13px;
+        background: #FFFFFF;
+        transition: border-color .2s ease;
+    }
+
+    .history-card:hover {
+        border-color: #C9DCD1;
+    }
+
+    .history-info {
+        min-width: 0;
     }
 
     .history-info h3 {
+        margin: 0 0 5px;
+        color: #172E29;
         font-size: 14px;
-        font-weight: 600;
-        margin: 0 0 6px;
+        font-weight: 650;
     }
 
     .history-info p {
-        color: #687B74;
-        font-size: 11px;
         margin: 0;
+        color: #71817C;
+        font-size: 11px;
     }
 
     .history-meta {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 16px;
         flex-shrink: 0;
     }
 
     .history-status {
-        padding: 5px 10px;
-        border-radius: 12px;
+        padding: 6px 11px;
+        border-radius: 20px;
         font-size: 10px;
-        font-weight: 600;
+        font-weight: 650;
     }
 
     .history-status.draft {
@@ -467,57 +557,139 @@
         color: #176454;
         font-family: inherit;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 650;
         cursor: pointer;
         text-decoration: none;
     }
 
-    .alert {
-        padding: 12px 15px;
-        margin-bottom: 15px;
-        border-radius: 9px;
-        font-size: 12px;
+    .view-schedule-btn:hover {
+        text-decoration: underline;
     }
 
-    .alert-success {
-        background: #E7F0EB;
-        color: #176454;
-    }
+    /* Tablet */
 
-    .alert-error {
-        background: #FCE8E8;
-        color: #B42318;
-    }
-
-    .alert-validation {
-        background: #FCE8E8;
-        color: #B42318;
-        border-radius: 9px;
-        padding: 12px 15px;
-        font-size: 12px;
-        margin-bottom: 15px;
-    }
-
-    @media (max-width: 480px) {
+    @media (max-width: 900px) {
         .schedule-page {
-            width: calc(100% - 32px);
-            margin-top: 24px;
+            padding: 25px 22px 35px;
+        }
+
+        .calendar-day {
+            min-height: 54px;
+        }
+
+        .time-fields {
+            gap: 12px;
+        }
+    }
+
+    /* Mobile */
+
+    @media (max-width: 600px) {
+        .schedule-page {
+            padding: 22px 16px 30px;
+        }
+
+        .schedule-heading {
+            margin-bottom: 20px;
+        }
+
+        .page-subtitle {
+            font-size: 12px;
+        }
+
+        .schedule-actions {
+            align-items: flex-start;
+            flex-direction: column;
+            margin-bottom: 19px;
         }
 
         .calendar-card {
-            padding: 12px;
+            padding: 14px 11px;
+            border-radius: 14px;
+        }
+
+        .calendar-header {
+            margin-bottom: 17px;
+        }
+
+        .calendar-header h2 {
+            font-size: 16px;
+        }
+
+        .month-btn {
+            width: 34px;
+            height: 34px;
         }
 
         .calendar-grid {
             gap: 4px;
         }
 
+        .weekday {
+            font-size: 10px;
+            padding-bottom: 7px;
+        }
+
         .calendar-day {
-            min-height: 38px;
+            min-height: 44px;
+            gap: 3px;
+            border-radius: 7px;
+            font-size: 11px;
+        }
+
+        .calendar-day small {
+            font-size: 7px;
+        }
+
+        .calendar-note {
+            font-size: 10px;
+        }
+
+        .selected-day-heading h2 {
+            font-size: 17px;
+        }
+
+        .selected-day-heading p {
+            font-size: 11px;
+        }
+
+        .shift-card {
+            padding: 17px;
+        }
+
+        .shift-card-header {
+            margin-bottom: 16px;
+        }
+
+        .shift-card-header h3 {
+            font-size: 13px;
         }
 
         .time-fields {
-            gap: 10px;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 13px;
+        }
+
+        .field-group label {
+            font-size: 10px;
+        }
+
+        .field-group input,
+        .field-group select {
+            height: 40px;
+            font-size: 12px;
+        }
+
+        .shift-actions {
+            align-items: stretch;
+        }
+
+        .shift-actions > .field-group {
+            flex-basis: 100%;
+        }
+
+        .shift-actions > button {
+            align-self: flex-start;
         }
 
         .bottom-actions {
@@ -526,30 +698,85 @@
 
         .save-btn,
         .publish-btn {
-            font-size: 12px;
+            min-height: 44px;
+            font-size: 11px;
         }
 
         .history-card {
             align-items: flex-start;
             flex-direction: column;
+            padding: 16px;
         }
 
         .history-meta {
             width: 100%;
             justify-content: space-between;
         }
+
+        .section-heading {
+            font-size: 17px;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .schedule-page {
+            padding-left: 12px;
+            padding-right: 12px;
+        }
+
+        .calendar-card {
+            padding-left: 8px;
+            padding-right: 8px;
+        }
+
+        .calendar-day {
+            min-height: 39px;
+            font-size: 10px;
+        }
+
+        .calendar-day small {
+            font-size: 6px;
+        }
+
+        .time-fields {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .bottom-actions {
+            flex-direction: column;
+        }
+
+        .save-btn,
+        .publish-btn {
+            width: 100%;
+            flex: 1;
+        }
+    }
+
+    @media (min-width: 1500px) {
+        .calendar-day {
+            min-height: 78px;
+        }
+
+        .calendar-grid {
+            gap: 10px;
+        }
     }
 </style>
 
-<div class="schedule-page">
+<main class="schedule-page">
 
-    <div class="eyebrow">TEAM SCHEDULING</div>
+    <header class="schedule-heading">
+        <div>
+            <div class="eyebrow">TEAM SCHEDULING</div>
 
-    <h1 class="page-title">Schedule management</h1>
+            <h1 class="page-title">Schedule management</h1>
 
-    <p class="page-subtitle">
-        Plan your team’s month, one shift at a time.
-    </p>
+            <p class="page-subtitle">
+                Plan your team’s month, one shift at a time.
+            </p>
+        </div>
+    </header>
 
     @if(session('success'))
         <div class="alert alert-success">
@@ -596,6 +823,7 @@
     </div>
 
     <!-- Monthly Calendar -->
+
     <div class="calendar-card">
 
         <div class="calendar-header">
@@ -687,19 +915,22 @@
     </div>
 
     <!-- Selected Day -->
+
     <div class="selected-day-heading">
 
-        <h2>
-            {{ \Carbon\Carbon::parse($selectedDate)->format('l, F j') }}
-        </h2>
+        <div>
+            <h2>
+                {{ \Carbon\Carbon::parse($selectedDate)->format('l, F j') }}
+            </h2>
 
-        <p>
-            {{ $shifts->flatMap(function ($shift) {
-                return $shift->assignments->pluck('employee_id');
-            })->unique()->count() }}
-            employees scheduled · {{ $shifts->count() }}
-            {{ $shifts->count() === 1 ? 'shift' : 'shifts' }}
-        </p>
+            <p>
+                {{ $shifts->flatMap(function ($shift) {
+                    return $shift->assignments->pluck('employee_id');
+                })->unique()->count() }}
+                employees scheduled · {{ $shifts->count() }}
+                {{ $shifts->count() === 1 ? 'shift' : 'shifts' }}
+            </p>
+        </div>
 
     </div>
 
@@ -735,6 +966,7 @@
     @if($selectedSchedule && $selectedSchedule->status === 'Draft')
 
         <!-- Existing Shifts -->
+
         @forelse($shifts as $shift)
 
             <div class="shift-card">
@@ -754,6 +986,7 @@
                 </div>
 
                 <!-- Update Shift -->
+
                 <form
                     action="{{ route('admin.schedules.shifts.update', $shift->shift_id) }}"
                     method="POST"
@@ -811,6 +1044,7 @@
                 </form>
 
                 <!-- Employee Assignments -->
+
                 <div class="assignments">
 
                     @forelse($shift->assignments as $assignment)
@@ -851,6 +1085,7 @@
                 </div>
 
                 <!-- Add Employee -->
+
                 <form
                     action="{{ route('admin.schedules.assignments.store', $shift->shift_id) }}"
                     method="POST"
@@ -899,6 +1134,7 @@
                 </form>
 
                 <!-- Remove Shift -->
+
                 <div class="shift-actions">
 
                     <form
@@ -928,6 +1164,7 @@
         @endforelse
 
         <!-- Add New Shift -->
+
         <div class="shift-card">
 
             <div class="shift-card-header">
@@ -991,6 +1228,7 @@
         </div>
 
         <!-- Schedule Actions -->
+
         <div class="bottom-actions">
 
             <form
@@ -1025,6 +1263,7 @@
     @endif
 
     <!-- Monthly Schedule History -->
+
     <h2 class="section-heading">
         Monthly Schedule History
     </h2>
@@ -1072,6 +1311,6 @@
 
     @endforelse
 
-</div>
+</main>
 
 @endsection
