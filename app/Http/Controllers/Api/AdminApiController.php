@@ -12,6 +12,7 @@ use App\Models\Payroll;
 use App\Models\Schedule;
 use App\Models\Shift;
 use App\Models\ShiftAssignment;
+use App\Models\LeaveRequest;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -359,6 +360,19 @@ class AdminApiController extends Controller
     }
 
     /**
+     * View a single payroll record by payroll_id.
+     */
+    public function showPayroll(Int $id): JsonResponse
+    {
+        $payroll = Payroll::with(['employee.user', 'employee.department'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'payroll' => $payroll,
+        ]);
+    }
+
+    /**
      * Retrieve schedule management data for a given month and date.
      */
     public function scheduleManagement(Request $request): JsonResponse
@@ -409,6 +423,19 @@ class AdminApiController extends Controller
     }
 
     /**
+     * View a single schedule by schedule_id along with its shifts and assignments.
+     */
+    public function showSchedule($id): JsonResponse
+    {
+        $schedule = Schedule::with(['admin.user', 'shifts.assignments.employee.user'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'schedule' => $schedule,
+        ]);
+    }
+
+    /**
      * Create a new monthly schedule in Draft status.
      */
     public function storeSchedule(Request $request): JsonResponse
@@ -450,7 +477,7 @@ class AdminApiController extends Controller
     /**
      * Create a shift under a Draft schedule.
      */
-    public function storeShift(Request $request, $scheduleId): JsonResponse
+    public function storeShift(Request $request, Int $scheduleId): JsonResponse
     {
         $schedule = Schedule::findOrFail($scheduleId);
 
@@ -489,9 +516,22 @@ class AdminApiController extends Controller
     }
 
     /**
+     * View a single shift by shift_id along with its schedule and assigned employees.
+     */
+    public function showShift(Int $id): JsonResponse
+    {
+        $shift = Shift::with(['schedule', 'assignments.employee.user'])
+            ->findOrFail($id);
+
+        return response()->json([
+            'shift' => $shift,
+        ]);
+    }
+
+    /**
      * Update an existing shift on a Draft schedule using only provided fields.
      */
-    public function updateShift(Request $request, $shiftId): JsonResponse
+    public function updateShift(Request $request, Int $shiftId): JsonResponse
     {
         $shift = Shift::with('schedule')->findOrFail($shiftId);
 
