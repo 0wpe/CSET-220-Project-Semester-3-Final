@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum')->group(function () {
         ->group(function () {
             Route::get('/dashboard', [AdminApiController::class, 'dashboard']);
             Route::get('/employees', [AdminApiController::class, 'employees']);
+            Route::get('/employees/{id}/details', [AdminApiController::class, 'showEmployeeDetails']);
             Route::post('/employees', [AdminApiController::class, 'store']);
             Route::put('/employees/{id}', [AdminApiController::class, 'update']);
             Route::delete('/employees/{id}', [AdminApiController::class, 'destroy']);
@@ -42,11 +43,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::get('/attendance', [AdminApiController::class, 'attendance']);
             Route::get('/payroll', [AdminApiController::class, 'payroll']);
+            Route::get('/payroll/{id}', [AdminApiController::class, 'showPayroll']);
 
             // Schedule Management
             Route::get('/schedule-management', [AdminApiController::class, 'scheduleManagement']);
             Route::post('/schedule-management', [AdminApiController::class, 'storeSchedule']);
+            Route::get('/schedules/{schedule}', [AdminApiController::class, 'showSchedule']);
             Route::post('/schedules/{schedule}/shifts', [AdminApiController::class, 'storeShift']);
+            Route::get('/shifts/{shift}', [AdminApiController::class, 'showShift']);
             Route::put('/shifts/{shift}', [AdminApiController::class, 'updateShift']);
             Route::delete('/shifts/{shift}', [AdminApiController::class, 'destroyShift']);
             Route::post('/shifts/{shift}/assignments', [AdminApiController::class, 'storeShiftAssignment']);
