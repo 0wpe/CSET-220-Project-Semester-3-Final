@@ -28,6 +28,19 @@ Route::middleware(['auth', 'role:Employee'])
 
         Route::get('/time-entry', [EmployeeController::class, 'timeEntry']);
 
+        Route::post('/time-entry/clock-in', [EmployeeController::class, 'clockIn'])
+            ->name('employee.time-entry.clock-in');
+
+        Route::post('/time-entry/clock-out', [EmployeeController::class, 'clockOut'])
+            ->name('employee.time-entry.clock-out');
+
+        // Break Management
+        Route::post('/time-entry/start-break', [EmployeeController::class, 'startBreak'])
+            ->name('employee.time-entry.start-break');
+
+        Route::post('/time-entry/end-break', [EmployeeController::class, 'endBreak'])
+            ->name('employee.time-entry.end-break');
+
         Route::get('/my-schedule', [EmployeeController::class, 'mySchedule']);
 
         Route::get('/payslips', [EmployeeController::class, 'payslips'])

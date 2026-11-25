@@ -17,6 +17,8 @@ class Attendance extends Model
         'clock_in',
         'clock_out',
         'break_minutes',
+        'break_seconds',
+        'break_started_at',
     ];
 
     protected function casts(): array
@@ -24,6 +26,7 @@ class Attendance extends Model
         return [
             'clock_in' => 'datetime',
             'clock_out' => 'datetime',
+            'break_started_at' => 'datetime',
         ];
     }
 

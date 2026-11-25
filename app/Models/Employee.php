@@ -10,7 +10,7 @@ class Employee extends Model
 {
     protected $table = 'Employee';
     protected $primaryKey = 'employee_id';
-    public $timestamps = false; // Set to true if you have created_at/updated_at
+    public $timestamps = false;
 
     protected $fillable = [
         'user_id',
@@ -19,7 +19,15 @@ class Employee extends Model
         'base_salary',
         'hourly_rate',
         'pay_type',
+        'annual_leave_allowance',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'annual_leave_allowance' => 'decimal:2',
+        ];
+    }
 
     public function user(): BelongsTo
     {
