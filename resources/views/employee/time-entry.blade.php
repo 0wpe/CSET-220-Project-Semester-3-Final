@@ -3,7 +3,88 @@
 @section('title', 'Time Entry | Tempo HR')
 
 @section('content')
+
     @include('partials.navbar', ['activePage' => 'time'])
+
+    @php
+        /*
+        |--------------------------------------------------------------------------
+        | Attendance and break calculations
+        |--------------------------------------------------------------------------
+        */
+
+        $isClockedIn = $attendance
+            && $attendance->clock_in
+            && !$attendance->clock_out;
+
+        $hasClockedOut = $attendance
+            && $attendance->clock_out;
+
+        // The database is the source of truth for the current break state.
+        $isOnBreak = $isClockedIn
+            && $attendance->break_started_at;
+
+        $clockInTimeValue = $attendance?->clock_in;
+        $clockOutTimeValue = $attendance?->clock_out;
+
+        // Actual completed break duration, including partial minutes.
+        $breakSeconds = (int) ($attendance?->break_seconds ?? 0);
+
+        // Fallback for older attendance records.
+        if (
+            $breakSeconds === 0
+            && (int) ($attendance?->break_minutes ?? 0) > 0
+        ) {
+            $breakSeconds = (int) $attendance->break_minutes * 60;
+        }
+
+        // Current ongoing break duration.
+        $breakStartedAt = $attendance?->break_started_at;
+
+        $activeBreakSeconds = 0;
+
+        if ($isOnBreak && $breakStartedAt) {
+            $activeBreakSeconds = max(
+                0,
+                now()->getTimestamp() - $breakStartedAt->getTimestamp()
+            );
+        }
+
+        // Scheduled break allowance comes from the assigned shift.
+        $scheduledBreakMinutes = (int) ($scheduledBreakMinutes ?? 0);
+
+        // Calculate actual worked time.
+        $elapsedSeconds = 0;
+
+        if ($clockInTimeValue) {
+            $endTime = $clockOutTimeValue ?? now();
+
+            $elapsedSeconds = max(
+                0,
+                $endTime->getTimestamp()
+                    - $clockInTimeValue->getTimestamp()
+                    - $breakSeconds
+                    - $activeBreakSeconds
+            );
+        }
+
+        // Total actual break duration, including an ongoing break.
+        $actualBreakSeconds = $breakSeconds + $activeBreakSeconds;
+
+        $actualBreakMinutes = (int) ceil($actualBreakSeconds / 60);
+
+        $breakOverageMinutes = max(
+            0,
+            $actualBreakMinutes - $scheduledBreakMinutes
+        );
+
+        // Only show attendance records from the current week for this employee.
+        $weekAttendance = $employee->attendance()
+            ->with(['assignment.shift'])
+            ->whereBetween('clock_in', [now()->startOfWeek(), now()->endOfWeek()])
+            ->orderByDesc('clock_in')
+            ->get();
+    @endphp
 
     <style>
         * {
@@ -147,6 +228,8 @@
 
         .timer-button {
             min-height: 49px;
+            width: 100%;
+            padding: 0 15px;
             border-radius: 11px;
             font-family: inherit;
             font-size: 13px;
@@ -164,11 +247,21 @@
             border-color: #176454;
         }
 
+        .timer-button.break-button {
+            background: #F2F6F3;
+            color: #176454;
+            border-color: #D5E4DB;
+        }
+
+        .timer-button.break-button:hover:not(:disabled) {
+            background: #E7F0EB;
+        }
+
         .timer-button.primary:hover:not(:disabled) {
             background: #124F42;
         }
 
-        .timer-button:hover:not(:disabled):not(.primary) {
+        .timer-button:hover:not(:disabled):not(.primary):not(.break-button) {
             background: #F2F6F3;
         }
 
@@ -492,6 +585,18 @@
 
     <main class="time-page">
 
+        @if(session('success'))
+            <div role="status" style="margin-bottom: 18px; padding: 12px 16px; border-radius: 10px; background: #E7F0EB; color: #176454;">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div role="alert" style="margin-bottom: 18px; padding: 12px 16px; border-radius: 10px; background: #FCEFED; color: #A33B32;">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <header class="page-header">
             <div>
                 <div class="eyebrow">ATTENDANCE</div>
@@ -504,111 +609,167 @@
             </div>
 
             <div class="date-label">
-                Monday, November 9
+                {{ now()->format('l, F j, Y') }}
             </div>
         </header>
-        <section class="timer-card">
-            <span class="status" id="clockStatus">Not Clocked In</span>
-
-            <div class="timer" id="timer">00:00:00</div>
 
         <div class="time-main-grid">
+
+            {{-- WORK SESSION TIMER --}}
 
             <section class="timer-card">
 
                 <div class="timer-top">
                     <h2 class="timer-heading">Your work session</h2>
-            
-        <div class="timer-actions">
-    @if(!$attendance || $attendance->clock_out)
-        <form method="POST" action="{{ route('employee.clock-in') }}">
-            @csrf
-            <button type="submit" class="timer-button" id="clockInButton">
-                Clock-In
-            </button>
-        </form>
-    @else
-        <button type="button" class="timer-button" id="clockInButton" disabled>
-            Clock-In
-        </button>
-    @endif
-
-    @if($attendance && !$attendance->clock_out)
-        <form method="POST" action="{{ route('employee.clock-out') }}">
-            @csrf
-            <button type="submit" class="timer-button primary" id="clockOutButton">
-                Clock-Out
-            </button>
-        </form>
-    @else
-        <button type="button" class="timer-button primary" id="clockOutButton" disabled>
-            Clock-Out
-        </button>
-    @endif
-</div>
-
-@if($attendance && !$attendance->clock_out)
-    <div class="break-actions">
-        @if($isOnBreak)
-            <form method="POST" action="{{ route('employee.resume-work') }}">
-                @csrf
-                <button type="submit" class="timer-button">
-                    Resume Work
-                </button>
-            </form>
-        @else
-            <form method="POST" action="{{ route('employee.start-break') }}">
-                @csrf
-                <button type="submit" class="timer-button">
-                    Start Break
-                </button>
-            </form>
-        @endif
-    </div>
-@endif
-        </section>
 
                     <span class="status" id="clockStatus">
-                        <span class="status-dot"></span>
-                        On the clock
+                        <span
+                            class="status-dot"
+                            @if(!$isClockedIn) style="background: #82928C;"
+                            @elseif($isOnBreak) style="background: #D69B38;"
+                            @endif
+                        ></span>
+
+                        {{ $hasClockedOut
+                            ? 'Shift complete'
+                            : ($isOnBreak
+                                ? 'On break'
+                                : ($isClockedIn
+                                    ? 'On the clock'
+                                    : 'Not clocked in')) }}
                     </span>
                 </div>
 
                 <div class="timer-display">
-                    <div class="timer" id="timer">00:41:00</div>
+
+                    <div class="timer" id="timer">00:00:00</div>
 
                     <p class="timer-description" id="timerDescription">
-                        Clocked in today at 09:00 AM
+                        @if($isOnBreak)
+                            Your work timer is paused while you are on break.
+                        @elseif($clockInTimeValue)
+                            @if($hasClockedOut)
+                                Shift completed at {{ $clockOutTimeValue->format('h:i A') }}
+                            @else
+                                Clocked in today at {{ $clockInTimeValue->format('h:i A') }}
+                            @endif
+                        @elseif($assignment)
+                            Ready to clock in
+                        @else
+                            No shift assigned today
+                        @endif
                     </p>
+
                 </div>
 
                 <div class="timer-actions">
-                    <button
-                        type="button"
-                        class="timer-button"
-                        id="clockInButton"
-                        disabled
-                    >
-                        Clock-In
-                    </button>
 
-                    <button
-                        type="button"
-                        class="timer-button primary"
-                        id="clockOutButton"
-                    >
-                        Clock-Out
-                    </button>
+                    {{-- CLOCK-IN --}}
+
+                    @if($assignment && !$attendance)
+
+                        <form action="{{ route('employee.clock-in') }}" method="POST">
+                            @csrf
+
+                            <button
+                                type="submit"
+                                class="timer-button primary"
+                                style="width: 100%;"
+                            >
+                                Clock-In
+                            </button>
+                        </form>
+
+                    @else
+
+                        <button
+                            type="button"
+                            class="timer-button primary"
+                            disabled
+                        >
+                            Clock-In
+                        </button>
+
+                    @endif
+
+                    {{-- CLOCK-OUT --}}
+
+                    @if($isClockedIn && !$isOnBreak)
+
+                        <form action="{{ route('employee.clock-out') }}" method="POST">
+                            @csrf
+
+                            <button
+                                type="submit"
+                                class="timer-button"
+                                style="width: 100%;"
+                            >
+                                Clock-Out
+                            </button>
+                        </form>
+
+                    @else
+
+                        <button
+                            type="button"
+                            class="timer-button"
+                            disabled
+                        >
+                            Clock-Out
+                        </button>
+
+                    @endif
+
                 </div>
 
+                {{-- BREAK CONTROLS --}}
+
+                @if($isClockedIn)
+
+                    <div class="break-actions">
+
+                        @if($isOnBreak)
+
+                            <form method="POST" action="{{ route('employee.resume-work') }}">
+                                @csrf
+
+                                <button
+                                    type="submit"
+                                    class="timer-button break-button"
+                                >
+                                    Resume Work
+                                </button>
+                            </form>
+
+                        @else
+
+                            <form method="POST" action="{{ route('employee.start-break') }}">
+                                @csrf
+
+                                <button
+                                    type="submit"
+                                    class="timer-button break-button"
+                                >
+                                    Start Break
+                                </button>
+                            </form>
+
+                        @endif
+
+                    </div>
+
+                @endif
+
             </section>
+
+            {{-- TODAY'S SUMMARY --}}
 
             <section class="today-card">
 
                 <div>
                     <div class="today-card-label">Today's total</div>
 
-                    <div class="today-hours" id="todayHours">00h 41m</div>
+                    <div class="today-hours" id="todayHours">00h 00m</div>
 
                     <p class="today-description">
                         Time recorded for your current shift
@@ -619,15 +780,51 @@
                     <div class="today-divider"></div>
 
                     <div class="today-card-bottom">
+
                         <div class="today-detail">
                             <span>Clock-in</span>
-                            <span id="summaryClockIn">09:00 AM</span>
+
+                            <span id="summaryClockIn">
+                                {{ $clockInTimeValue
+                                    ? $clockInTimeValue->format('h:i A')
+                                    : 'Not recorded' }}
+                            </span>
                         </div>
 
                         <div class="today-detail">
                             <span>Clock-out</span>
-                            <span id="summaryClockOut">Not recorded</span>
+
+                            <span id="summaryClockOut">
+                                {{ $clockOutTimeValue
+                                    ? $clockOutTimeValue->format('h:i A')
+                                    : 'Not recorded' }}
+                            </span>
                         </div>
+
+                        <div class="today-detail">
+                            <span>Scheduled break</span>
+
+                            <span>
+                                {{ $scheduledBreakMinutes }} min
+                            </span>
+                        </div>
+
+                        <div class="today-detail">
+                            <span>Actual break</span>
+
+                            <span id="summaryBreak">
+                                {{ $actualBreakMinutes }} min
+                            </span>
+                        </div>
+
+                        <div class="today-detail">
+                            <span>Break overage</span>
+
+                            <span id="summaryBreakOverage">
+                                {{ $breakOverageMinutes }} min
+                            </span>
+                        </div>
+
                     </div>
                 </div>
 
@@ -635,12 +832,15 @@
 
         </div>
 
+        {{-- ACTIVITY AND WEEKLY ATTENDANCE --}}
+
         <div class="time-content-grid">
 
             <section class="content-section">
 
                 <div class="section-heading">
                     <h2>Today's activity</h2>
+
                     <span class="section-caption">Current shift</span>
                 </div>
 
@@ -649,31 +849,70 @@
                     <div class="activity-top">
 
                         <span class="activity-badge" id="activityBadge">
-                            IN
+                            {{ $hasClockedOut
+                                ? 'OUT'
+                                : ($isOnBreak
+                                    ? 'BRK'
+                                    : ($isClockedIn ? 'IN' : '--')) }}
                         </span>
 
                         <div class="activity-info">
-                            <strong id="activityTitle">Clocked in</strong>
-                            <span>Office · San Francisco</span>
+
+                            <strong id="activityTitle">
+                                {{ $hasClockedOut
+                                    ? 'Clocked out'
+                                    : ($isOnBreak
+                                        ? 'On break'
+                                        : ($isClockedIn
+                                            ? 'Clocked in'
+                                            : 'No activity yet')) }}
+                            </strong>
+
+                            <span>
+                                @if($assignment && $assignment->shift)
+
+                                    Scheduled shift:
+
+                                    {{ \Illuminate\Support\Carbon::parse($assignment->shift->start_time)->format('h:i A') }}
+
+                                    –
+
+                                    {{ \Illuminate\Support\Carbon::parse($assignment->shift->end_time)->format('h:i A') }}
+
+                                @else
+
+                                    No shift assigned today
+
+                                @endif
+                            </span>
+
                         </div>
 
                         <span class="activity-time" id="clockInTime">
-                            09:00 AM
+                            {{ $clockInTimeValue
+                                ? $clockInTimeValue->format('h:i A')
+                                : '—' }}
                         </span>
 
                     </div>
 
                     <div class="activity-bottom">
+
                         <span class="muted">Clock-out</span>
 
                         <span class="muted" id="clockOutTime">
-                            Not yet recorded
+                            {{ $clockOutTimeValue
+                                ? $clockOutTimeValue->format('h:i A')
+                                : 'Not yet recorded' }}
                         </span>
+
                     </div>
 
                 </div>
 
             </section>
+
+            {{-- WEEKLY ATTENDANCE --}}
 
             <section class="content-section">
 
@@ -687,36 +926,104 @@
 
                 <div class="weekly-card">
 
-                    <div class="week-row current">
-                        <div>
-                            <div class="week-date">Mon, Nov 9</div>
-                            <div class="week-description" id="weeklyStatus">
-                                In progress
+                    @forelse($weekAttendance as $weekRecord)
+
+                        @php
+                            $recordEnd = $weekRecord->clock_out ?? now();
+
+                            $recordSeconds = max(
+                                0,
+                                $recordEnd->getTimestamp()
+                                    - $weekRecord->clock_in->getTimestamp()
+                            );
+
+                            // Deduct completed actual breaks, including partial minutes.
+                            $recordBreakSeconds = (int) ($weekRecord->break_seconds ?? 0);
+
+                            // Fallback for older attendance records.
+                            if (
+                                $recordBreakSeconds === 0
+                                && (int) $weekRecord->break_minutes > 0
+                            ) {
+                                $recordBreakSeconds = (int) $weekRecord->break_minutes * 60;
+                            }
+
+                            $recordSeconds = max(
+                                0,
+                                $recordSeconds - $recordBreakSeconds
+                            );
+
+                            // Also deduct an ongoing break for the current record.
+                            if ($weekRecord->break_started_at && !$weekRecord->clock_out) {
+
+                                $recordActiveBreakSeconds = max(
+                                    0,
+                                    now()->getTimestamp()
+                                        - $weekRecord->break_started_at->getTimestamp()
+                                );
+
+                                $recordSeconds = max(
+                                    0,
+                                    $recordSeconds - $recordActiveBreakSeconds
+                                );
+                            }
+
+                            $recordHours = floor($recordSeconds / 3600);
+
+                            $recordMinutes = floor(
+                                ($recordSeconds % 3600) / 60
+                            );
+                        @endphp
+
+                        <div class="week-row {{ $weekRecord->attendance_id === ($attendance?->attendance_id) ? 'current' : '' }}">
+
+                            <div>
+
+                                <div class="week-date">
+                                    {{ $weekRecord->clock_in->format('D, M j') }}
+                                </div>
+
+                                <div class="week-description">
+
+                                    {{ $weekRecord->clock_in->format('h:i A') }}
+
+                                    –
+
+                                    {{ $weekRecord->clock_out
+                                        ? $weekRecord->clock_out->format('h:i A')
+                                        : ($weekRecord->break_started_at
+                                            ? 'On break'
+                                            : 'In progress') }}
+
+                                </div>
+
                             </div>
+
+                            <span class="week-hours">
+                                {{ sprintf('%02dh %02dm', $recordHours, $recordMinutes) }}
+                            </span>
+
                         </div>
 
-                        <span class="week-hours" id="weeklyHours">
-                            00h 41m
-                        </span>
-                    </div>
+                    @empty
 
-                    <div class="week-row">
-                        <div>
-                            <div class="week-date">Fri, Nov 6</div>
-                            <div class="week-description">09:00 – 17:00</div>
+                        <div class="week-row">
+
+                            <div>
+                                <div class="week-date">
+                                    No attendance recorded
+                                </div>
+
+                                <div class="week-description">
+                                    Your recorded shifts will appear here
+                                </div>
+                            </div>
+
+                            <span class="week-hours">—</span>
+
                         </div>
 
-                        <span class="week-hours">08h 00m</span>
-                    </div>
-
-                    <div class="week-row">
-                        <div>
-                            <div class="week-date">Thu, Nov 5</div>
-                            <div class="week-description">09:00 – 17:00</div>
-                        </div>
-
-                        <span class="week-hours">08h 00m</span>
-                    </div>
+                    @endforelse
 
                 </div>
 
@@ -725,292 +1032,183 @@
         </div>
 
         <p class="timezone-note">
-            Times are shown in Pacific Time (PT).
+            Times are shown in {{ config('app.timezone') }}.
         </p>
 
     </main>
 
     <script>
-        let elapsedSeconds = 41 * 60;
-        let isClockedIn = true;
-        let clockInTimestamp = Date.now() - elapsedSeconds * 1000;
-        let timerInterval = null;
+        (function () {
 
-        const timer = document.getElementById('timer');
-        const clockStatus = document.getElementById('clockStatus');
-        const timerDescription = document.getElementById('timerDescription');
-        const clockInButton = document.getElementById('clockInButton');
-        const clockOutButton = document.getElementById('clockOutButton');
-        const clockInTime = document.getElementById('clockInTime');
-        const clockOutTime = document.getElementById('clockOutTime');
-        const activityBadge = document.getElementById('activityBadge');
-        const activityTitle = document.getElementById('activityTitle');
-        const weeklyHours = document.getElementById('weeklyHours');
-        const weeklyStatus = document.getElementById('weeklyStatus');
-        const todayHours = document.getElementById('todayHours');
-        const summaryClockIn = document.getElementById('summaryClockIn');
-        const summaryClockOut = document.getElementById('summaryClockOut');
+            /*
+            |--------------------------------------------------------------------------
+            | Elements
+            |--------------------------------------------------------------------------
+            */
 
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const remainingSeconds = seconds % 60;
+            const timer = document.getElementById('timer');
+            const todayHours = document.getElementById('todayHours');
+            const summaryBreak = document.getElementById('summaryBreak');
+            const summaryBreakOverage = document.getElementById('summaryBreakOverage');
 
-            return [
-                String(hours).padStart(2, '0'),
-                String(minutes).padStart(2, '0'),
-                String(remainingSeconds).padStart(2, '0')
-            ].join(':');
-        }
+            /*
+            |--------------------------------------------------------------------------
+            | Database attendance values
+            |--------------------------------------------------------------------------
+            */
 
-        function formatHoursMinutes(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
+            const isClockedIn = @json((bool) $isClockedIn);
+            const isOnBreak = @json((bool) $isOnBreak);
+            const hasClockedOut = @json((bool) $hasClockedOut);
 
-            return String(hours).padStart(2, '0') + 'h ' +
-                String(minutes).padStart(2, '0') + 'm';
-        }
+            const clockInTimestamp = @json(
+                $clockInTimeValue
+                    ? $clockInTimeValue->getTimestamp()
+                    : null
+            );
 
-        function formatClockTime(date) {
-            return date.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-        }
+            const clockOutTimestamp = @json(
+                $clockOutTimeValue
+                    ? $clockOutTimeValue->getTimestamp()
+                    : null
+            );
 
-        function updateTimer() {
-            if (isClockedIn) {
-                elapsedSeconds = Math.floor(
-                    (Date.now() - clockInTimestamp) / 1000
+            const breakStartedTimestamp = @json(
+                $breakStartedAt
+                    ? $breakStartedAt->getTimestamp()
+                    : null
+            );
+
+            const completedBreakSeconds = @json((int) $breakSeconds);
+
+            const scheduledBreakMinutes = @json((int) $scheduledBreakMinutes);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Time formatting
+            |--------------------------------------------------------------------------
+            */
+
+            function formatTime(totalSeconds) {
+
+                const hours = Math.floor(totalSeconds / 3600);
+
+                const minutes = Math.floor(
+                    (totalSeconds % 3600) / 60
                 );
+
+                const seconds = totalSeconds % 60;
+
+                return [hours, minutes, seconds]
+                    .map(value => String(value).padStart(2, '0'))
+                    .join(':');
             }
 
-            timer.textContent = formatTime(elapsedSeconds);
-            weeklyHours.textContent = formatHoursMinutes(elapsedSeconds);
-            todayHours.textContent = formatHoursMinutes(elapsedSeconds);
-        }
+            function formatHoursMinutes(totalSeconds) {
 
-        function startTimer() {
-            clearInterval(timerInterval);
-            timerInterval = setInterval(updateTimer, 1000);
+                const hours = Math.floor(totalSeconds / 3600);
+
+                const minutes = Math.floor(
+                    (totalSeconds % 3600) / 60
+                );
+
+                return String(hours).padStart(2, '0') + 'h ' +
+                    String(minutes).padStart(2, '0') + 'm';
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Timer calculations
+            |--------------------------------------------------------------------------
+            */
+
+            function updateTimer() {
+
+                const currentTimestamp = Math.floor(Date.now() / 1000);
+
+                let activeBreakSeconds = 0;
+
+                // Calculate the currently running break from the database timestamp.
+                if (isOnBreak && breakStartedTimestamp !== null) {
+
+                    activeBreakSeconds = Math.max(
+                        0,
+                        currentTimestamp - breakStartedTimestamp
+                    );
+
+                }
+
+                let elapsedSeconds = 0;
+
+                if (clockInTimestamp !== null) {
+
+                    // A completed shift uses its saved clock-out time.
+                    const endTimestamp = hasClockedOut && clockOutTimestamp !== null
+                        ? clockOutTimestamp
+                        : currentTimestamp;
+
+                    const totalElapsed = Math.max(
+                        0,
+                        endTimestamp - clockInTimestamp
+                    );
+
+                    // Subtract completed breaks and the current active break.
+                    elapsedSeconds = Math.max(
+                        0,
+                        totalElapsed
+                            - completedBreakSeconds
+                            - (hasClockedOut ? 0 : activeBreakSeconds)
+                    );
+
+                }
+
+                // Calculate total break duration.
+                const totalActualBreakSeconds =
+                    completedBreakSeconds + activeBreakSeconds;
+
+                const actualBreakMinutes = Math.ceil(
+                    totalActualBreakSeconds / 60
+                );
+
+                const breakOverageMinutes = Math.max(
+                    0,
+                    actualBreakMinutes - scheduledBreakMinutes
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Update displayed values
+                |--------------------------------------------------------------------------
+                */
+
+                timer.textContent = formatTime(elapsedSeconds);
+
+                todayHours.textContent = formatHoursMinutes(elapsedSeconds);
+
+                summaryBreak.textContent = actualBreakMinutes + ' min';
+
+                summaryBreakOverage.textContent =
+                    breakOverageMinutes + ' min';
+
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Start the timer
+            |--------------------------------------------------------------------------
+            */
+
             updateTimer();
-        }
 
-        clockInButton.addEventListener('click', function () {
-            if (isClockedIn) return;
+            // Keep updating while the employee is clocked in.
+            // This also updates the break duration while the employee is on break.
+            if (isClockedIn) {
 
-            isClockedIn = true;
-            elapsedSeconds = 0;
-            clockInTimestamp = Date.now();
+                window.setInterval(updateTimer, 1000);
 
-            const currentTime = formatClockTime(new Date());
+            }
 
-            clockStatus.innerHTML =
-                '<span class="status-dot"></span> On the clock';
-
-            timerDescription.textContent =
-                'Clocked in today at ' + currentTime;
-
-            clockInTime.textContent = currentTime;
-            summaryClockIn.textContent = currentTime;
-
-            clockOutTime.textContent = 'Not yet recorded';
-            summaryClockOut.textContent = 'Not recorded';
-    const savedClockInTimestamp = @json(
-    $attendance && !$attendance->clock_out
-        ? $attendance->clock_in->timestamp * 1000
-        : null
-);
-
-const savedShiftStartTimestamp = @json(
-    $attendance
-        ? $attendance->clock_in->timestamp * 1000
-        : null
-);
-
-const savedBreakMinutes = @json($attendance ? $attendance->break_minutes : 0);
-
-const isOnBreak = @json($isOnBreak);
-
-const breakStartedTimestamp = @json(
-    $isOnBreak
-        ? session()->get('break_started_at_' . $attendance->employee_id) * 1000
-        : null
-);
-
-const savedClockOutTimestamp = @json(
-    $attendance && $attendance->clock_out
-        ? $attendance->clock_out->timestamp * 1000
-        : null
-);
-
-let clockInTimestamp = savedClockInTimestamp;
-let isClockedIn = clockInTimestamp !== null;
-let elapsedSeconds = 0;
-let timerInterval = null;
-
-const timer = document.getElementById('timer');
-const clockStatus = document.getElementById('clockStatus');
-const timerDescription = document.getElementById('timerDescription');
-const clockInButton = document.getElementById('clockInButton');
-const clockOutButton = document.getElementById('clockOutButton');
-const clockInTime = document.getElementById('clockInTime');
-const clockOutTime = document.getElementById('clockOutTime');
-const activityBadge = document.getElementById('activityBadge');
-const activityTitle = document.getElementById('activityTitle');
-const weeklyHours = document.getElementById('weeklyHours');
-const weeklyStatus = document.getElementById('weeklyStatus');
-
-function formatTime(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-
-    return [
-        String(hours).padStart(2, '0'),
-        String(minutes).padStart(2, '0'),
-        String(remainingSeconds).padStart(2, '0')
-    ].join(':');
-}
-
-function formatHoursMinutes(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-
-    return String(hours).padStart(2, '0') + 'h ' +
-        String(minutes).padStart(2, '0') + 'm';
-}
-
-function formatClockTime(date) {
-    return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-}
-
-function updateTimer() {
-    if (isClockedIn) {
-        let totalSeconds = Math.floor(
-            (Date.now() - clockInTimestamp) / 1000
-        );
-
-        let breakSeconds = savedBreakMinutes * 60;
-
-        if (isOnBreak && breakStartedTimestamp !== null) {
-            breakSeconds += Math.floor(
-                (Date.now() - breakStartedTimestamp) / 1000
-            );
-        }
-
-        elapsedSeconds = Math.max(0, totalSeconds - breakSeconds);
-    }
-
-    timer.textContent = formatTime(elapsedSeconds);
-
-    if (weeklyHours) {
-        weeklyHours.textContent = formatHoursMinutes(elapsedSeconds);
-    }
-}
-
-function startTimer() {
-    clearInterval(timerInterval);
-
-    updateTimer();
-
-    timerInterval = setInterval(updateTimer, 1000);
-}
-
-// Set the page based on the saved attendance record
-if (isClockedIn) {
-    const startTime = new Date(clockInTimestamp);
-    const currentTime = formatClockTime(startTime);
-
-       if (isOnBreak) {
-    clockStatus.textContent = 'On Break';
-    timerDescription.textContent = 'You are currently on break.';
-} else {
-    clockStatus.textContent = 'On the clock';
-    timerDescription.textContent = 'Clocked in today at ' + currentTime;
-}
-
-    if (clockInTime) {
-        clockInTime.textContent = currentTime;
-    }
-
-    if (clockOutTime) {
-        clockOutTime.textContent = 'Not yet recorded';
-    }
-
-    if (activityBadge) activityBadge.textContent = 'IN';
-    if (activityTitle) activityTitle.textContent = 'Clocked in';
-    if (weeklyStatus) weeklyStatus.textContent = 'In progress';
-
-    clockInButton.disabled = true;
-    clockOutButton.disabled = false;
-
-    startTimer();
-
-} else if (savedClockOutTimestamp !== null) {
-    const startTime = new Date(@json(
-        $attendance ? $attendance->clock_in->timestamp * 1000 : null
-    ));
-
-    const endTime = new Date(savedClockOutTimestamp);
-    clearInterval(timerInterval);
-
-elapsedSeconds = Math.max(
-    0,
-    Math.floor(
-        (savedClockOutTimestamp - savedShiftStartTimestamp) / 1000
-    ) - (savedBreakMinutes * 60)
-);
-
-    clockStatus.textContent = 'Shift complete';
-    timerDescription.textContent = 'Clocked out at ' + formatClockTime(endTime);
-
-    if (clockInTime) {
-        clockInTime.textContent = formatClockTime(startTime);
-    }
-
-    if (clockOutTime) {
-        clockOutTime.textContent = formatClockTime(endTime);
-    }
-
-            elapsedSeconds = Math.floor(
-                (Date.now() - clockInTimestamp) / 1000
-            );
-
-            isClockedIn = false;
-    if (activityBadge) activityBadge.textContent = 'OUT';
-    if (activityTitle) activityTitle.textContent = 'Clocked out';
-    if (weeklyStatus) weeklyStatus.textContent = 'Completed';
-
-    clockInButton.disabled = false;
-    clockOutButton.disabled = true;
-
-            clockStatus.innerHTML = 'Shift complete';
-
-            timerDescription.textContent =
-                'Clocked out at ' + currentTime;
-
-            clockOutTime.textContent = currentTime;
-            summaryClockOut.textContent = currentTime;
-    updateTimer();
-
-} else {
-    clockStatus.textContent = 'Not Clocked In';
-    timerDescription.textContent = 'You have not clocked in yet.';
-
-    if (activityBadge) activityBadge.textContent = 'OUT';
-    if (activityTitle) activityTitle.textContent = 'Not clocked in';
-    if (weeklyStatus) weeklyStatus.textContent = 'Not started';
-
-    clockInButton.disabled = false;
-    clockOutButton.disabled = true;
-
-    updateTimer();
-}
+        })();
     </script>
+
 @endsection

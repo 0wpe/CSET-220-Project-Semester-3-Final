@@ -5,19 +5,342 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\User;
+use App\Models\Department;
+use App\Models\ShiftAssignment;
+use App\Models\Attendance;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\PayrollController;
-use App\Models\Department;
+use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
     public function dashboard()
     {
-        return view('employee.dashboard');
+        $employee = Employee::with(['user', 'department'])
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $now = now();
+
+        /*
+         * Annual leave balance
+         */
+        $annualLeaveAllowance = (float) $employee->annual_leave_allowance;
+
+        $yearStart = $now->copy()->startOfYear();
+        $yearEnd = $now->copy()->endOfYear();
+
+        $approvedAnnualLeaveRequests = $employee->leaveRequests()
+            ->whereRaw('LOWER(status) = ?', ['approved'])
+            ->whereRaw('LOWER(leave_type) = ?', ['annual leave'])
+            ->whereDate('start_date', '<=', $yearEnd->toDateString())
+            ->whereDate('end_date', '>=', $yearStart->toDateString())
+            ->get();
+
+        $annualLeaveUsed = 0;
+
+        foreach ($approvedAnnualLeaveRequests as $leaveRequest) {
+            $startDate = Carbon::parse($leaveRequest->start_date);
+            $endDate = Carbon::parse($leaveRequest->end_date);
+
+            if ($startDate->lt($yearStart)) {
+                $startDate = $yearStart->copy();
+            }
+
+            if ($endDate->gt($yearEnd)) {
+                $endDate = $yearEnd->copy();
+            }
+
+            $annualLeaveUsed += $startDate->diffInDays($endDate) + 1;
+        }
+
+        $remainingAnnualLeave = max(
+            0,
+            $annualLeaveAllowance - $annualLeaveUsed
+        );
+
+        /*
+         * Today's shift and attendance
+         */
+        $today = $now->toDateString();
+
+        $todayAssignment = ShiftAssignment::with(['shift.schedule'])
+            ->where('employee_id', $employee->employee_id)
+            ->whereHas('shift', function ($query) use ($today) {
+                $query->whereDate('shift_date', $today)
+                    ->whereHas('schedule', function ($scheduleQuery) {
+                        $scheduleQuery->where('status', 'Published');
+                    });
+            })
+            ->first();
+
+        $todayAttendance = null;
+
+        if ($todayAssignment) {
+            $todayAttendance = Attendance::where(
+                'assignment_id',
+                $todayAssignment->assignment_id
+            )
+                ->where('employee_id', $employee->employee_id)
+                ->first();
+        }
+
+        $shiftStatus = 'No shift assigned';
+        $shiftHeading = 'Enjoy your day.';
+        $shiftDetails = 'You do not have a published shift scheduled for today.';
+        $clockedInTime = null;
+
+        if ($todayAssignment && $todayAssignment->shift) {
+            $shift = $todayAssignment->shift;
+
+            $shiftStart = Carbon::parse($shift->start_time)->format('h:i A');
+            $shiftEnd = Carbon::parse($shift->end_time)->format('h:i A');
+
+            $shiftStatus = 'Not clocked in';
+            $shiftHeading = 'Your shift is scheduled.';
+            $shiftDetails = $shiftStart . ' – ' . $shiftEnd;
+
+            if ($todayAttendance && $todayAttendance->clock_in) {
+                $clockedInTime = Carbon::parse(
+                    $todayAttendance->clock_in
+                )->format('h:i A');
+
+                if ($todayAttendance->clock_out) {
+                    $shiftStatus = 'Shift completed';
+                    $shiftHeading = 'You have finished your shift.';
+                } elseif ($todayAttendance->break_started_at) {
+                    $shiftStatus = 'On break';
+                    $shiftHeading = 'Enjoy your break.';
+                } else {
+                    $shiftStatus = 'On the clock';
+                    $shiftHeading = 'Make today count.';
+                }
+            }
+        }
+
+        /*
+         * Time worked today
+         */
+        $todayWorkedSeconds = 0;
+
+        if ($todayAttendance && $todayAttendance->clock_in) {
+            $clockIn = Carbon::parse($todayAttendance->clock_in);
+
+            $clockOut = $todayAttendance->clock_out
+                ? Carbon::parse($todayAttendance->clock_out)
+                : $now->copy();
+
+            if ($clockOut->gt($now)) {
+                $clockOut = $now->copy();
+            }
+
+            $completedBreakSeconds = (int) $todayAttendance->break_seconds;
+
+            // Fallback for older records that have not been converted.
+            if (
+                $completedBreakSeconds === 0
+                && (int) $todayAttendance->break_minutes > 0
+            ) {
+                $completedBreakSeconds =
+                    (int) $todayAttendance->break_minutes * 60;
+            }
+
+            $todayWorkedSeconds = max(
+                0,
+                $clockOut->timestamp
+                    - $clockIn->timestamp
+                    - $completedBreakSeconds
+            );
+
+            // Do not count time elapsed during an active break.
+            if ($todayAttendance->break_started_at) {
+                $activeBreakSeconds = max(
+                    0,
+                    $now->timestamp
+                        - Carbon::parse($todayAttendance->break_started_at)->timestamp
+                );
+
+                $todayWorkedSeconds = max(
+                    0,
+                    $todayWorkedSeconds - $activeBreakSeconds
+                );
+            }
+        }
+
+        $isOnBreak = $todayAttendance
+            && $todayAttendance->break_started_at
+            && !$todayAttendance->clock_out;
+
+        $scheduledBreakMinutes = (int) (
+            $todayAssignment?->shift?->break_minutes ?? 0
+        );
+
+        /*
+         * Current week's date range
+         */
+        $weekStart = $now->copy()->startOfWeek(Carbon::MONDAY);
+        $weekEnd = $now->copy()->endOfWeek(Carbon::SUNDAY);
+
+        /*
+         * Weekly hours worked
+         */
+        $weeklyAttendances = Attendance::where(
+            'employee_id',
+            $employee->employee_id
+        )
+            ->whereBetween('clock_in', [$weekStart, $weekEnd])
+            ->get();
+
+        $weeklyWorkedSeconds = 0;
+
+        foreach ($weeklyAttendances as $attendance) {
+            if (!$attendance->clock_in) {
+                continue;
+            }
+
+            $clockIn = Carbon::parse($attendance->clock_in);
+
+            $clockOut = $attendance->clock_out
+                ? Carbon::parse($attendance->clock_out)
+                : $now->copy();
+
+            if ($clockOut->gt($now)) {
+                $clockOut = $now->copy();
+            }
+
+            $completedBreakSeconds = (int) $attendance->break_seconds;
+
+            // Fallback for older records that have not been converted.
+            if (
+                $completedBreakSeconds === 0
+                && (int) $attendance->break_minutes > 0
+            ) {
+                $completedBreakSeconds =
+                    (int) $attendance->break_minutes * 60;
+            }
+
+            $workedSeconds = max(
+                0,
+                $clockOut->timestamp
+                    - $clockIn->timestamp
+                    - $completedBreakSeconds
+            );
+
+            // Exclude an ongoing break from weekly worked time too.
+            if ($attendance->break_started_at) {
+                $activeBreakSeconds = max(
+                    0,
+                    $now->timestamp
+                        - Carbon::parse($attendance->break_started_at)->timestamp
+                );
+
+                $workedSeconds = max(
+                    0,
+                    $workedSeconds - $activeBreakSeconds
+                );
+            }
+
+            $weeklyWorkedSeconds += $workedSeconds;
+        }
+
+        $weeklyWorkedHours = $weeklyWorkedSeconds / 3600;
+
+        /*
+         * Scheduled hours this week
+         */
+        $weeklyAssignments = ShiftAssignment::with('shift')
+            ->where('employee_id', $employee->employee_id)
+            ->whereHas('shift', function ($query) use ($weekStart, $weekEnd) {
+                $query->whereBetween('shift_date', [
+                    $weekStart->toDateString(),
+                    $weekEnd->toDateString(),
+                ])
+                    ->whereHas('schedule', function ($scheduleQuery) {
+                        $scheduleQuery->where('status', 'Published');
+                    });
+            })
+            ->get();
+
+        $scheduledSeconds = 0;
+
+        foreach ($weeklyAssignments as $assignment) {
+            $shift = $assignment->shift;
+
+            if (!$shift) {
+                continue;
+            }
+
+            $shiftDate = Carbon::parse($shift->shift_date)->toDateString();
+
+            $scheduledStart = Carbon::parse(
+                $shiftDate . ' ' . $shift->start_time
+            );
+
+            $scheduledEnd = Carbon::parse(
+                $shiftDate . ' ' . $shift->end_time
+            );
+
+            if ($scheduledEnd->lte($scheduledStart)) {
+                $scheduledEnd->addDay();
+            }
+
+            $scheduledSeconds += max(
+                0,
+                $scheduledEnd->timestamp
+                    - $scheduledStart->timestamp
+                    - ((int) $shift->break_minutes * 60)
+            );
+        }
+
+        $scheduledHours = $scheduledSeconds / 3600;
+
+        /*
+         * Upcoming approved leave
+         */
+        $upcomingLeave = $employee->leaveRequests()
+            ->whereRaw('LOWER(status) = ?', ['approved'])
+            ->whereDate('end_date', '>=', $today)
+            ->orderBy('start_date')
+            ->first();
+
+        $upcomingLeaveDays = null;
+
+        if ($upcomingLeave) {
+            $leaveStart = Carbon::parse($upcomingLeave->start_date);
+            $leaveEnd = Carbon::parse($upcomingLeave->end_date);
+
+            $upcomingLeaveDays = $leaveStart->diffInDays($leaveEnd) + 1;
+        }
+
+        /*
+         * Footer message
+         */
+        $currentDay = $now->format('l');
+
+        return view('employee.dashboard', compact(
+            'employee',
+            'annualLeaveAllowance',
+            'annualLeaveUsed',
+            'remainingAnnualLeave',
+            'todayAssignment',
+            'todayAttendance',
+            'shiftStatus',
+            'shiftHeading',
+            'shiftDetails',
+            'clockedInTime',
+            'todayWorkedSeconds',
+            'weeklyWorkedHours',
+            'scheduledHours',
+            'upcomingLeave',
+            'upcomingLeaveDays',
+            'currentDay',
+            'isOnBreak',
+            'scheduledBreakMinutes'
+        ));
     }
 
     public function profile()
@@ -70,92 +393,210 @@ class EmployeeController extends Controller
     }
 
     public function timeEntry()
-{
-    $employee = Employee::where('user_id', Auth::id())
-        ->firstOrFail();
+    {
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
 
-    $attendance = $employee->attendance()
-        ->latest('attendance_id')
-        ->first();
+        $assignment = ShiftAssignment::with(['shift.schedule'])
+            ->where('employee_id', $employee->employee_id)
+            ->whereHas('shift', function ($query) {
+                $query->whereDate('shift_date', now()->toDateString())
+                    ->whereHas('schedule', function ($scheduleQuery) {
+                        $scheduleQuery->where('status', 'Published');
+                    });
+            })
+            ->first();
 
-        $isOnBreak = $attendance && !$attendance->clock_out
-    && session()->has('break_started_at_' . $employee->employee_id);
-    return view('employee.time-entry', compact('attendance', 'isOnBreak'));
-}
+        $attendance = null;
 
-public function clockIn()
-{
-    $employee = Employee::where('user_id', Auth::id())
-        ->firstOrFail();
+        if ($assignment) {
+            $attendance = Attendance::where(
+                'assignment_id',
+                $assignment->assignment_id
+            )
+                ->where('employee_id', $employee->employee_id)
+                ->first();
+        }
 
-    $existingAttendance = $employee->attendance()
-        ->whereNull('clock_out')
-        ->exists();
+        $scheduledBreakMinutes = (int) (
+            $assignment?->shift?->break_minutes ?? 0
+        );
 
-    if ($existingAttendance) {
-        return redirect()->back()
-            ->with('error', 'You are already clocked in.');
+        return view('employee.time-entry', compact(
+            'employee',
+            'assignment',
+            'attendance',
+            'scheduledBreakMinutes'
+        ));
     }
 
-    $employee->attendance()->create([
-        'clock_in' => now(),
-        'break_minutes' => 0,
-    ]);
+    public function clockIn()
+    {
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
 
-    return redirect()->back()
-        ->with('success', 'You have successfully clocked in.');
-}
+        $assignment = ShiftAssignment::where('employee_id', $employee->employee_id)
+            ->whereHas('shift', function ($query) {
+                $query->whereDate('shift_date', now()->toDateString())
+                    ->whereHas('schedule', function ($scheduleQuery) {
+                        $scheduleQuery->where('status', 'Published');
+                    });
+            })
+            ->first();
 
-public function clockOut()
-{
-    $employee = Employee::where('user_id', Auth::id())
-        ->firstOrFail();
+        if (!$assignment) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'You do not have a published shift assigned for today.');
+        }
 
-    $attendance = $employee->attendance()
-        ->whereNull('clock_out')
-        ->latest('attendance_id')
-        ->first();
+        $existingAttendance = Attendance::where(
+            'assignment_id',
+            $assignment->assignment_id
+        )
+            ->where('employee_id', $employee->employee_id)
+            ->first();
 
-    if (!$attendance) {
-        return redirect()->back()
-            ->with('error', 'You are not currently clocked in.');
+        if ($existingAttendance) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'Attendance has already been recorded for this shift.');
+        }
+
+        Attendance::create([
+            'employee_id' => $employee->employee_id,
+            'assignment_id' => $assignment->assignment_id,
+            'clock_in' => now(),
+            'clock_out' => null,
+            'break_minutes' => 0,
+            'break_seconds' => 0,
+            'break_started_at' => null,
+        ]);
+
+        return redirect('/employee/time-entry')
+            ->with('success', 'You have successfully clocked in.');
     }
 
-    $attendance->update([
-        'clock_out' => now(),
-    ]);
+    public function startBreak()
+    {
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
 
-    return redirect()->back()
-        ->with('success', 'You have successfully clocked out.');
-}
+        $attendance = Attendance::where('employee_id', $employee->employee_id)
+            ->whereDate('clock_in', now()->toDateString())
+            ->whereNull('clock_out')
+            ->first();
 
-public function startBreak()
-{
-    $employee = Employee::where('user_id', Auth::id())
-        ->firstOrFail();
+        if (!$attendance) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'You must be clocked in before starting a break.');
+        }
 
-    $attendance = $employee->attendance()
-        ->whereNull('clock_out')
-        ->latest('attendance_id')
-        ->first();
+        if ($attendance->break_started_at) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'You are already on a break.');
+        }
 
-    if (!$attendance) {
+        $attendance->update([
+            'break_started_at' => now(),
+        ]);
+
         return redirect()->back()
-            ->with('error', 'You must clock in before starting a break.');
+            ->with('success', 'Your break has started.');
     }
 
-    $sessionKey = 'break_started_at_' . $employee->employee_id;
+    public function endBreak()
+    {
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
 
-    if (session()->has($sessionKey)) {
+        $attendance = Attendance::where('employee_id', $employee->employee_id)
+            ->whereDate('clock_in', now()->toDateString())
+            ->whereNull('clock_out')
+            ->first();
+
+        if (!$attendance) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'No active attendance record was found.');
+        }
+
+        if (!$attendance->break_started_at) {
+            return redirect()->back()
+                ->with('error', 'You are not currently on a break.');
+        }
+
+        $breakStart = Carbon::parse($attendance->break_started_at);
+
+        // Calculate the exact break duration in seconds.
+        $breakSeconds = max(
+            0,
+            now()->timestamp - $breakStart->timestamp
+        );
+
+        // Accumulate this break with all previous breaks.
+        $totalBreakSeconds = (int) $attendance->break_seconds
+            + $breakSeconds;
+
+        // Keep break_minutes synchronized for existing code.
+        $totalBreakMinutes = intdiv($totalBreakSeconds, 60);
+
+        $attendance->update([
+            'break_seconds' => $totalBreakSeconds,
+            'break_minutes' => $totalBreakMinutes,
+            'break_started_at' => null,
+        ]);
+
         return redirect()->back()
-            ->with('error', 'You are already on break.');
+            ->with('success', 'Your break has ended. Your timer has resumed.');
     }
 
-    session()->put($sessionKey, now()->timestamp);
+    public function clockOut()
+    {
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
 
-    return redirect()->back()
-        ->with('success', 'Your break has started.');
-}
+        $assignment = ShiftAssignment::where('employee_id', $employee->employee_id)
+            ->whereHas('shift', function ($query) {
+                $query->whereDate('shift_date', now()->toDateString())
+                    ->whereHas('schedule', function ($scheduleQuery) {
+                        $scheduleQuery->where('status', 'Published');
+                    });
+            })
+            ->first();
+
+        if (!$assignment) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'You do not have a published shift assigned for today.');
+        }
+
+        $attendance = Attendance::where(
+            'assignment_id',
+            $assignment->assignment_id
+        )
+            ->where('employee_id', $employee->employee_id)
+            ->first();
+
+        if (!$attendance) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'You must clock in before you can clock out.');
+        }
+
+        if ($attendance->clock_out) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'You have already clocked out for this shift.');
+        }
+
+        if ($attendance->break_started_at) {
+            return redirect('/employee/time-entry')
+                ->with('error', 'Please end your break before clocking out.');
+        }
+
+        $attendance->update([
+            'clock_out' => now(),
+        ]);
+
+        return redirect('/employee/time-entry')
+            ->with('success', 'You have successfully clocked out.');
+    }
+
     public function leaveRequests()
     {
         return view('employee.leave-requests');
@@ -166,7 +607,7 @@ public function startBreak()
         return view('employee.my-schedule');
     }
 
-    // Display the logged-in employee's processed payslips
+    // Display the logged-in employee's processed payslips.
     public function payslips()
     {
         $employee = Employee::where('user_id', Auth::id())
@@ -197,6 +638,7 @@ public function startBreak()
             'base_salary' => 'nullable|numeric|min:0',
             'hourly_rate' => 'nullable|numeric|min:0',
             'pay_type' => 'required|in:Hourly,Salaried',
+            'annual_leave_allowance' => 'nullable|numeric|min:0|max:999.99',
         ]);
 
         $temporaryPassword = Str::random(12);
@@ -217,6 +659,7 @@ public function startBreak()
                 'base_salary' => $validatedData['base_salary'] ?? 0,
                 'hourly_rate' => $validatedData['hourly_rate'] ?? 0,
                 'pay_type' => $validatedData['pay_type'],
+                'annual_leave_allowance' => $validatedData['annual_leave_allowance'] ?? 12,
             ]);
         });
 
@@ -235,11 +678,13 @@ public function startBreak()
             'base_salary' => 'nullable|numeric|min:0',
             'hourly_rate' => 'nullable|numeric|min:0',
             'pay_type' => 'required|in:Hourly,Salary',
+            'annual_leave_allowance' => 'sometimes|numeric|min:0|max:999.99',
         ]);
 
         $employee->update($validatedData);
 
-        return redirect()->back()->with('success', 'Employee updated successfully.');
+        return redirect()->back()
+            ->with('success', 'Employee updated successfully.');
     }
 
     public function destroy($id)
@@ -251,39 +696,45 @@ public function startBreak()
     }
 
     public function resumeWork()
-{
-    $employee = Employee::where('user_id', Auth::id())
-        ->firstOrFail();
+    {
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
 
-    $attendance = $employee->attendance()
-        ->whereNull('clock_out')
-        ->latest('attendance_id')
-        ->first();
+        $attendance = Attendance::where(
+            'employee_id',
+            $employee->employee_id
+        )
+            ->whereDate('clock_in', now()->toDateString())
+            ->whereNull('clock_out')
+            ->first();
 
-    if (!$attendance) {
+        if (!$attendance) {
+            return redirect()->back()
+                ->with('error', 'You are not currently clocked in.');
+        }
+
+        if (!$attendance->break_started_at) {
+            return redirect()->back()
+                ->with('error', 'You are not currently on break.');
+        }
+
+        $breakStart = Carbon::parse($attendance->break_started_at);
+
+        $breakSeconds = max(
+            0,
+            now()->timestamp - $breakStart->timestamp
+        );
+
+        $totalBreakSeconds = (int) $attendance->break_seconds
+            + $breakSeconds;
+
+        $attendance->update([
+            'break_seconds' => $totalBreakSeconds,
+            'break_minutes' => intdiv($totalBreakSeconds, 60),
+            'break_started_at' => null,
+        ]);
+
         return redirect()->back()
-            ->with('error', 'You are not currently clocked in.');
+            ->with('success', 'Your break has ended. Welcome back!');
     }
-
-    $sessionKey = 'break_started_at_' . $employee->employee_id;
-
-    if (!session()->has($sessionKey)) {
-        return redirect()->back()
-            ->with('error', 'You are not currently on break.');
-    }
-
-    $breakStartedAt = session()->get($sessionKey);
-
-    $breakSeconds = now()->timestamp - $breakStartedAt;
-    $breakMinutes = (int) floor($breakSeconds / 60);
-
-    $attendance->update([
-        'break_minutes' => $attendance->break_minutes + $breakMinutes,
-    ]);
-
-    session()->forget($sessionKey);
-
-    return redirect()->back()
-        ->with('success', 'Your break has ended. Welcome back!');
-}
 }

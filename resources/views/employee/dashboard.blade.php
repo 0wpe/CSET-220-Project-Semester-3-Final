@@ -6,6 +6,62 @@
 
 @include('partials.navbar', ['activePage' => 'home'])
 
+@php
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance and break calculations
+    |--------------------------------------------------------------------------
+    */
+
+    $isClockedIn = $todayAttendance
+        && $todayAttendance->clock_in
+        && !$todayAttendance->clock_out;
+
+    // The database is the source of truth for the current break state.
+    $isOnBreak = $isClockedIn
+        && $todayAttendance->break_started_at;
+
+    // Actual completed break duration, including partial minutes.
+    $completedBreakSeconds = (int) ($todayAttendance?->break_seconds ?? 0);
+
+    // Fallback for older attendance records.
+    if (
+        $completedBreakSeconds === 0
+        && (int) ($todayAttendance?->break_minutes ?? 0) > 0
+    ) {
+        $completedBreakSeconds =
+            (int) $todayAttendance->break_minutes * 60;
+    }
+
+    $breakStartedAt = $todayAttendance?->break_started_at;
+
+    $activeBreakSeconds = 0;
+
+    if ($isOnBreak && $breakStartedAt) {
+        $activeBreakSeconds = max(
+            0,
+            now()->getTimestamp() - $breakStartedAt->getTimestamp()
+        );
+    }
+
+    $actualBreakSeconds = $completedBreakSeconds + $activeBreakSeconds;
+
+    // Scheduled break allowance comes from the assigned shift.
+    $scheduledBreakMinutes = (int) ($todayAssignment?->shift?->break_minutes ?? 0);
+
+    $scheduledBreakSeconds = $scheduledBreakMinutes * 60;
+
+    // Only actual break time is counted toward break overage.
+    $breakOverageSeconds = max(
+        0,
+        $actualBreakSeconds - $scheduledBreakSeconds
+    );
+
+    $actualBreakMinutes = (int) ceil($actualBreakSeconds / 60);
+
+    $breakOverageMinutes = (int) ceil($breakOverageSeconds / 60);
+@endphp
+
 <style>
     .employee-dashboard {
         width: 100%;
@@ -208,6 +264,68 @@
     .shift-link:hover {
         background: #EAF2EE;
         transform: translateY(-1px);
+    }
+
+    /* Break controls */
+
+    .break-controls {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 18px;
+    }
+
+    .break-button {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 17px;
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 10px;
+        color: #FFFFFF;
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .break-button:hover {
+        transform: translateY(-1px);
+    }
+
+    .start-break-button {
+        background: rgba(255, 255, 255, 0.14);
+    }
+
+    .start-break-button:hover {
+        background: rgba(255, 255, 255, 0.25);
+    }
+
+    .end-break-button {
+        background: #FFFFFF;
+        border-color: #FFFFFF;
+        color: #176454;
+    }
+
+    .end-break-button:hover {
+        background: #EAF2EE;
+    }
+
+    .break-message {
+        color: #D4E7DF;
+        font-size: 11px;
+        margin-top: 10px;
+    }
+
+    .break-summary {
+        color: #D4E7DF;
+        font-size: 11px;
+        margin-top: 12px;
+        line-height: 1.7;
     }
 
     /* Dashboard content */
@@ -653,11 +771,12 @@
     <header class="dashboard-header">
         <div>
             <div class="dashboard-date">
-                MONDAY, NOVEMBER 9
+                {{ now()->format('l, F j') }}
             </div>
 
             <h1 class="dashboard-title">
-                Good morning, Maya.
+                Good {{ now()->hour < 12 ? 'morning' : (now()->hour < 18 ? 'afternoon' : 'evening') }},
+                {{ $employee->user->name ?? 'there' }}.
             </h1>
 
             <p class="dashboard-subtitle">
@@ -682,21 +801,79 @@
 
                 <span class="shift-status">
                     <span class="shift-status-dot"></span>
-                    On the clock
+                    {{ $isOnBreak ? 'On break' : $shiftStatus }}
                 </span>
             </div>
 
             <h2 class="shift-heading">
-                Make today count.
+                {{ $shiftHeading }}
             </h2>
 
             <p class="shift-details">
-                09:00 AM – 05:00 PM · Office
+                {{ $shiftDetails }}
             </p>
 
-            <a href="/employee/time-entry" class="shift-link">
+            <a href="{{ url('/employee/time-entry') }}" class="shift-link">
                 View time entry <span aria-hidden="true">→</span>
             </a>
+
+            @if($isClockedIn)
+
+                <div class="break-controls">
+
+                    @if($isOnBreak)
+
+                        <form method="POST" action="{{ route('employee.time-entry.end-break') }}">
+                            @csrf
+
+                            <button type="submit" class="break-button end-break-button">
+                                ▶ End Break
+                            </button>
+                        </form>
+
+                    @else
+
+                        <form method="POST" action="{{ route('employee.time-entry.start-break') }}">
+                            @csrf
+
+                            <button type="submit" class="break-button start-break-button">
+                                ⏸ Start Break
+                            </button>
+                        </form>
+
+                    @endif
+
+                </div>
+
+                @if($isOnBreak)
+                    <div class="break-message">
+                        Your work timer is paused. Enjoy your break.
+                    </div>
+                @endif
+
+                <div
+                    class="break-summary"
+                    id="break-summary"
+                    data-completed-seconds="{{ $completedBreakSeconds }}"
+                    data-break-started="{{ $breakStartedAt ? $breakStartedAt->getTimestamp() : '' }}"
+                    data-on-break="{{ $isOnBreak ? 'true' : 'false' }}"
+                    data-scheduled-seconds="{{ $scheduledBreakSeconds }}"
+                >
+                    Actual break:
+                    <span id="actual-break-duration">{{ $actualBreakMinutes }} min</span>
+
+                    <span aria-hidden="true">·</span>
+
+                    Scheduled:
+                    {{ $scheduledBreakMinutes }} min
+
+                    <span aria-hidden="true">·</span>
+
+                    Over allowance:
+                    <span id="break-overage-duration">{{ $breakOverageMinutes }} min</span>
+                </div>
+
+            @endif
 
         </div>
 
@@ -706,12 +883,27 @@
                 TIME WORKED TODAY
             </div>
 
-            <div class="shift-time">
+            <div
+                class="shift-time"
+                id="worked-timer"
+                data-seconds="{{ max(0, (int) $todayWorkedSeconds) }}"
+                data-running="{{ $isClockedIn && !$isOnBreak ? 'true' : 'false' }}"
+            >
                 00h 00m 00sec
             </div>
 
             <div class="clocked-in-time">
-                Clocked in at 09:00 AM
+                @if($todayAttendance && $todayAttendance->clock_in)
+                    @if($todayAttendance->clock_out)
+                        Clocked out at {{ $todayAttendance->clock_out->format('h:i A') }}
+                    @elseif($isOnBreak)
+                        On break since {{ $breakStartedAt->format('h:i A') }}
+                    @else
+                        Clocked in at {{ $clockedInTime }}
+                    @endif
+                @else
+                    No clock-in recorded today
+                @endif
             </div>
 
         </div>
@@ -751,11 +943,11 @@
                         </div>
 
                         <div class="summary-value">
-                            0.68
+                            {{ number_format($weeklyWorkedHours, 2) }}
                         </div>
 
                         <div class="summary-caption">
-                            of 40 scheduled hours
+                            of {{ number_format($scheduledHours, 2) }} scheduled hours
                         </div>
 
                     </div>
@@ -773,7 +965,7 @@
                         </div>
 
                         <div class="summary-value">
-                            12 days
+                            {{ number_format($remainingAnnualLeave, 1) }} days
                         </div>
 
                         <div class="summary-caption">
@@ -802,7 +994,7 @@
 
                 <div class="quick-actions">
 
-                    <a href="/employee/leave-requests" class="action-link">
+                    <a href="{{ url('/employee/leave-requests') }}" class="action-link">
                         <span class="action-link-icon" aria-hidden="true">
                             +
                         </span>
@@ -814,7 +1006,7 @@
                         </span>
                     </a>
 
-                    <a href="/employee/profile" class="action-link">
+                    <a href="{{ url('/employee/profile') }}" class="action-link">
                         <span class="action-link-icon" aria-hidden="true">
                             ◉
                         </span>
@@ -850,30 +1042,55 @@
 
                 <div class="upcoming-panel">
 
-                    <div class="upcoming-card">
+                    @if($upcomingLeave)
 
-                        <div class="date-badge">
-                            <span class="date-month">NOV</span>
-                            <span class="date-day">20</span>
-                        </div>
+                        <div class="upcoming-card">
 
-                        <div class="upcoming-information">
+                            <div class="date-badge">
+                                <span class="date-month">
+                                    {{ $upcomingLeave->start_date->format('M') }}
+                                </span>
 
-                            <div class="leave-title">
-                                A little time to recharge
+                                <span class="date-day">
+                                    {{ $upcomingLeave->start_date->format('d') }}
+                                </span>
                             </div>
 
-                            <div class="leave-details">
-                                Annual leave · 1 day
-                            </div>
+                            <div class="upcoming-information">
 
-                            <span class="leave-status">
-                                Approved
-                            </span>
+                                <div class="leave-title">
+                                    {{ $upcomingLeave->reason ?: 'Time to recharge' }}
+                                </div>
+
+                                <div class="leave-details">
+                                    {{ ucfirst($upcomingLeave->leave_type) }}
+                                    · {{ $upcomingLeaveDays }}
+                                    {{ $upcomingLeaveDays == 1 ? 'day' : 'days' }}
+                                </div>
+
+                                <span class="leave-status">
+                                    Approved
+                                </span>
+
+                            </div>
 
                         </div>
 
-                    </div>
+                    @else
+
+                        <div class="upcoming-card">
+                            <div class="upcoming-information">
+                                <div class="leave-title">
+                                    No upcoming time off
+                                </div>
+
+                                <div class="leave-details">
+                                    You don't have any approved upcoming leave.
+                                </div>
+                            </div>
+                        </div>
+
+                    @endif
 
                     <div class="upcoming-footer">
 
@@ -881,7 +1098,7 @@
                             Your next scheduled time off
                         </span>
 
-                        <a href="/employee/leave-requests" class="upcoming-link">
+                        <a href="{{ url('/employee/leave-requests') }}" class="upcoming-link">
                             View requests →
                         </a>
 
@@ -900,9 +1117,131 @@
             ✓
         </span>
 
-        All caught up. Have a great Monday.
+        All caught up. Have a great {{ $currentDay }}.
     </footer>
 
 </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Worked time timer
+        |--------------------------------------------------------------------------
+        */
+
+        const timer = document.getElementById('worked-timer');
+
+        if (timer) {
+
+            let seconds = parseInt(timer.dataset.seconds, 10) || 0;
+
+            const isRunning = timer.dataset.running === 'true';
+
+            function updateTimer() {
+
+                const hours = Math.floor(seconds / 3600);
+
+                const minutes = Math.floor((seconds % 3600) / 60);
+
+                const remainingSeconds = seconds % 60;
+
+                timer.textContent =
+                    String(hours).padStart(2, '0') + 'h ' +
+                    String(minutes).padStart(2, '0') + 'm ' +
+                    String(remainingSeconds).padStart(2, '0') + 'sec';
+            }
+
+            updateTimer();
+
+            // The timer only increments while clocked in and NOT on break.
+            if (isRunning) {
+
+                setInterval(function () {
+
+                    seconds++;
+
+                    updateTimer();
+
+                }, 1000);
+
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Break duration and overage display
+        |--------------------------------------------------------------------------
+        */
+
+        const breakSummary = document.getElementById('break-summary');
+
+        if (breakSummary) {
+
+            const actualBreakDisplay = document.getElementById('actual-break-duration');
+
+            const breakOverageDisplay = document.getElementById('break-overage-duration');
+
+            const completedBreakSeconds =
+                parseInt(breakSummary.dataset.completedSeconds, 10) || 0;
+
+            const scheduledBreakSeconds =
+                parseInt(breakSummary.dataset.scheduledSeconds, 10) || 0;
+
+            const breakStartedTimestamp =
+                breakSummary.dataset.breakStarted
+                    ? parseInt(breakSummary.dataset.breakStarted, 10)
+                    : null;
+
+            const isOnBreak = breakSummary.dataset.onBreak === 'true';
+
+            function formatMinutes(seconds) {
+
+                return Math.ceil(Math.max(0, seconds) / 60) + ' min';
+
+            }
+
+            function updateBreakSummary() {
+
+                let activeBreakSeconds = 0;
+
+                if (isOnBreak && breakStartedTimestamp) {
+
+                    const currentTimestamp = Math.floor(Date.now() / 1000);
+
+                    activeBreakSeconds = Math.max(
+                        0,
+                        currentTimestamp - breakStartedTimestamp
+                    );
+                }
+
+                const actualBreakSeconds =
+                    completedBreakSeconds + activeBreakSeconds;
+
+                const overageSeconds = Math.max(
+                    0,
+                    actualBreakSeconds - scheduledBreakSeconds
+                );
+
+                actualBreakDisplay.textContent =
+                    formatMinutes(actualBreakSeconds);
+
+                breakOverageDisplay.textContent =
+                    formatMinutes(overageSeconds);
+            }
+
+            updateBreakSummary();
+
+            // While a break is active, update its duration without advancing worked time.
+            if (isOnBreak) {
+
+                setInterval(updateBreakSummary, 1000);
+
+            }
+        }
+
+    });
+</script>
 
 @endsection
