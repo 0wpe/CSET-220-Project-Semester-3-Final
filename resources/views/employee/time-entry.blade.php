@@ -139,6 +139,12 @@
             margin: 0 auto;
         }
 
+        .break-actions {
+            display: flex;
+            justify-content: center;
+            margin-top: 14px;
+        }
+
         .timer-button {
             min-height: 49px;
             border-radius: 11px;
@@ -501,6 +507,10 @@
                 Monday, November 9
             </div>
         </header>
+        <section class="timer-card">
+            <span class="status" id="clockStatus">Not Clocked In</span>
+
+            <div class="timer" id="timer">00:00:00</div>
 
         <div class="time-main-grid">
 
@@ -508,6 +518,55 @@
 
                 <div class="timer-top">
                     <h2 class="timer-heading">Your work session</h2>
+            
+        <div class="timer-actions">
+    @if(!$attendance || $attendance->clock_out)
+        <form method="POST" action="{{ route('employee.clock-in') }}">
+            @csrf
+            <button type="submit" class="timer-button" id="clockInButton">
+                Clock-In
+            </button>
+        </form>
+    @else
+        <button type="button" class="timer-button" id="clockInButton" disabled>
+            Clock-In
+        </button>
+    @endif
+
+    @if($attendance && !$attendance->clock_out)
+        <form method="POST" action="{{ route('employee.clock-out') }}">
+            @csrf
+            <button type="submit" class="timer-button primary" id="clockOutButton">
+                Clock-Out
+            </button>
+        </form>
+    @else
+        <button type="button" class="timer-button primary" id="clockOutButton" disabled>
+            Clock-Out
+        </button>
+    @endif
+</div>
+
+@if($attendance && !$attendance->clock_out)
+    <div class="break-actions">
+        @if($isOnBreak)
+            <form method="POST" action="{{ route('employee.resume-work') }}">
+                @csrf
+                <button type="submit" class="timer-button">
+                    Resume Work
+                </button>
+            </form>
+        @else
+            <form method="POST" action="{{ route('employee.start-break') }}">
+                @csrf
+                <button type="submit" class="timer-button">
+                    Start Break
+                </button>
+            </form>
+        @endif
+    </div>
+@endif
+        </section>
 
                     <span class="status" id="clockStatus">
                         <span class="status-dot"></span>
@@ -758,27 +817,178 @@
 
             clockOutTime.textContent = 'Not yet recorded';
             summaryClockOut.textContent = 'Not recorded';
+    const savedClockInTimestamp = @json(
+    $attendance && !$attendance->clock_out
+        ? $attendance->clock_in->timestamp * 1000
+        : null
+);
 
-            activityBadge.textContent = 'IN';
-            activityTitle.textContent = 'Clocked in';
+const savedShiftStartTimestamp = @json(
+    $attendance
+        ? $attendance->clock_in->timestamp * 1000
+        : null
+);
 
-            clockInButton.disabled = true;
-            clockOutButton.disabled = false;
-            weeklyStatus.textContent = 'In progress';
+const savedBreakMinutes = @json($attendance ? $attendance->break_minutes : 0);
 
-            startTimer();
-        });
+const isOnBreak = @json($isOnBreak);
 
-        clockOutButton.addEventListener('click', function () {
-            if (!isClockedIn) return;
+const breakStartedTimestamp = @json(
+    $isOnBreak
+        ? session()->get('break_started_at_' . $attendance->employee_id) * 1000
+        : null
+);
+
+const savedClockOutTimestamp = @json(
+    $attendance && $attendance->clock_out
+        ? $attendance->clock_out->timestamp * 1000
+        : null
+);
+
+let clockInTimestamp = savedClockInTimestamp;
+let isClockedIn = clockInTimestamp !== null;
+let elapsedSeconds = 0;
+let timerInterval = null;
+
+const timer = document.getElementById('timer');
+const clockStatus = document.getElementById('clockStatus');
+const timerDescription = document.getElementById('timerDescription');
+const clockInButton = document.getElementById('clockInButton');
+const clockOutButton = document.getElementById('clockOutButton');
+const clockInTime = document.getElementById('clockInTime');
+const clockOutTime = document.getElementById('clockOutTime');
+const activityBadge = document.getElementById('activityBadge');
+const activityTitle = document.getElementById('activityTitle');
+const weeklyHours = document.getElementById('weeklyHours');
+const weeklyStatus = document.getElementById('weeklyStatus');
+
+function formatTime(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainingSeconds = seconds % 60;
+
+    return [
+        String(hours).padStart(2, '0'),
+        String(minutes).padStart(2, '0'),
+        String(remainingSeconds).padStart(2, '0')
+    ].join(':');
+}
+
+function formatHoursMinutes(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    return String(hours).padStart(2, '0') + 'h ' +
+        String(minutes).padStart(2, '0') + 'm';
+}
+
+function formatClockTime(date) {
+    return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function updateTimer() {
+    if (isClockedIn) {
+        let totalSeconds = Math.floor(
+            (Date.now() - clockInTimestamp) / 1000
+        );
+
+        let breakSeconds = savedBreakMinutes * 60;
+
+        if (isOnBreak && breakStartedTimestamp !== null) {
+            breakSeconds += Math.floor(
+                (Date.now() - breakStartedTimestamp) / 1000
+            );
+        }
+
+        elapsedSeconds = Math.max(0, totalSeconds - breakSeconds);
+    }
+
+    timer.textContent = formatTime(elapsedSeconds);
+
+    if (weeklyHours) {
+        weeklyHours.textContent = formatHoursMinutes(elapsedSeconds);
+    }
+}
+
+function startTimer() {
+    clearInterval(timerInterval);
+
+    updateTimer();
+
+    timerInterval = setInterval(updateTimer, 1000);
+}
+
+// Set the page based on the saved attendance record
+if (isClockedIn) {
+    const startTime = new Date(clockInTimestamp);
+    const currentTime = formatClockTime(startTime);
+
+       if (isOnBreak) {
+    clockStatus.textContent = 'On Break';
+    timerDescription.textContent = 'You are currently on break.';
+} else {
+    clockStatus.textContent = 'On the clock';
+    timerDescription.textContent = 'Clocked in today at ' + currentTime;
+}
+
+    if (clockInTime) {
+        clockInTime.textContent = currentTime;
+    }
+
+    if (clockOutTime) {
+        clockOutTime.textContent = 'Not yet recorded';
+    }
+
+    if (activityBadge) activityBadge.textContent = 'IN';
+    if (activityTitle) activityTitle.textContent = 'Clocked in';
+    if (weeklyStatus) weeklyStatus.textContent = 'In progress';
+
+    clockInButton.disabled = true;
+    clockOutButton.disabled = false;
+
+    startTimer();
+
+} else if (savedClockOutTimestamp !== null) {
+    const startTime = new Date(@json(
+        $attendance ? $attendance->clock_in->timestamp * 1000 : null
+    ));
+
+    const endTime = new Date(savedClockOutTimestamp);
+    clearInterval(timerInterval);
+
+elapsedSeconds = Math.max(
+    0,
+    Math.floor(
+        (savedClockOutTimestamp - savedShiftStartTimestamp) / 1000
+    ) - (savedBreakMinutes * 60)
+);
+
+    clockStatus.textContent = 'Shift complete';
+    timerDescription.textContent = 'Clocked out at ' + formatClockTime(endTime);
+
+    if (clockInTime) {
+        clockInTime.textContent = formatClockTime(startTime);
+    }
+
+    if (clockOutTime) {
+        clockOutTime.textContent = formatClockTime(endTime);
+    }
 
             elapsedSeconds = Math.floor(
                 (Date.now() - clockInTimestamp) / 1000
             );
 
             isClockedIn = false;
+    if (activityBadge) activityBadge.textContent = 'OUT';
+    if (activityTitle) activityTitle.textContent = 'Clocked out';
+    if (weeklyStatus) weeklyStatus.textContent = 'Completed';
 
-            const currentTime = formatClockTime(new Date());
+    clockInButton.disabled = false;
+    clockOutButton.disabled = true;
 
             clockStatus.innerHTML = 'Shift complete';
 
@@ -787,18 +997,20 @@
 
             clockOutTime.textContent = currentTime;
             summaryClockOut.textContent = currentTime;
+    updateTimer();
 
-            activityBadge.textContent = 'OUT';
-            activityTitle.textContent = 'Clocked out';
+} else {
+    clockStatus.textContent = 'Not Clocked In';
+    timerDescription.textContent = 'You have not clocked in yet.';
 
-            clockInButton.disabled = false;
-            clockOutButton.disabled = true;
-            weeklyStatus.textContent = 'Completed';
+    if (activityBadge) activityBadge.textContent = 'OUT';
+    if (activityTitle) activityTitle.textContent = 'Not clocked in';
+    if (weeklyStatus) weeklyStatus.textContent = 'Not started';
 
-            updateTimer();
-            clearInterval(timerInterval);
-        });
+    clockInButton.disabled = false;
+    clockOutButton.disabled = true;
 
-        startTimer();
+    updateTimer();
+}
     </script>
 @endsection

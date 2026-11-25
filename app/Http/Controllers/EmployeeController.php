@@ -70,10 +70,92 @@ class EmployeeController extends Controller
     }
 
     public function timeEntry()
-    {
-        return view('employee.time-entry');
+{
+    $employee = Employee::where('user_id', Auth::id())
+        ->firstOrFail();
+
+    $attendance = $employee->attendance()
+        ->latest('attendance_id')
+        ->first();
+
+        $isOnBreak = $attendance && !$attendance->clock_out
+    && session()->has('break_started_at_' . $employee->employee_id);
+    return view('employee.time-entry', compact('attendance', 'isOnBreak'));
+}
+
+public function clockIn()
+{
+    $employee = Employee::where('user_id', Auth::id())
+        ->firstOrFail();
+
+    $existingAttendance = $employee->attendance()
+        ->whereNull('clock_out')
+        ->exists();
+
+    if ($existingAttendance) {
+        return redirect()->back()
+            ->with('error', 'You are already clocked in.');
     }
 
+    $employee->attendance()->create([
+        'clock_in' => now(),
+        'break_minutes' => 0,
+    ]);
+
+    return redirect()->back()
+        ->with('success', 'You have successfully clocked in.');
+}
+
+public function clockOut()
+{
+    $employee = Employee::where('user_id', Auth::id())
+        ->firstOrFail();
+
+    $attendance = $employee->attendance()
+        ->whereNull('clock_out')
+        ->latest('attendance_id')
+        ->first();
+
+    if (!$attendance) {
+        return redirect()->back()
+            ->with('error', 'You are not currently clocked in.');
+    }
+
+    $attendance->update([
+        'clock_out' => now(),
+    ]);
+
+    return redirect()->back()
+        ->with('success', 'You have successfully clocked out.');
+}
+
+public function startBreak()
+{
+    $employee = Employee::where('user_id', Auth::id())
+        ->firstOrFail();
+
+    $attendance = $employee->attendance()
+        ->whereNull('clock_out')
+        ->latest('attendance_id')
+        ->first();
+
+    if (!$attendance) {
+        return redirect()->back()
+            ->with('error', 'You must clock in before starting a break.');
+    }
+
+    $sessionKey = 'break_started_at_' . $employee->employee_id;
+
+    if (session()->has($sessionKey)) {
+        return redirect()->back()
+            ->with('error', 'You are already on break.');
+    }
+
+    session()->put($sessionKey, now()->timestamp);
+
+    return redirect()->back()
+        ->with('success', 'Your break has started.');
+}
     public function leaveRequests()
     {
         return view('employee.leave-requests');
@@ -167,4 +249,41 @@ class EmployeeController extends Controller
 
         return redirect()->back();
     }
+
+    public function resumeWork()
+{
+    $employee = Employee::where('user_id', Auth::id())
+        ->firstOrFail();
+
+    $attendance = $employee->attendance()
+        ->whereNull('clock_out')
+        ->latest('attendance_id')
+        ->first();
+
+    if (!$attendance) {
+        return redirect()->back()
+            ->with('error', 'You are not currently clocked in.');
+    }
+
+    $sessionKey = 'break_started_at_' . $employee->employee_id;
+
+    if (!session()->has($sessionKey)) {
+        return redirect()->back()
+            ->with('error', 'You are not currently on break.');
+    }
+
+    $breakStartedAt = session()->get($sessionKey);
+
+    $breakSeconds = now()->timestamp - $breakStartedAt;
+    $breakMinutes = (int) floor($breakSeconds / 60);
+
+    $attendance->update([
+        'break_minutes' => $attendance->break_minutes + $breakMinutes,
+    ]);
+
+    session()->forget($sessionKey);
+
+    return redirect()->back()
+        ->with('success', 'Your break has ended. Welcome back!');
+}
 }
