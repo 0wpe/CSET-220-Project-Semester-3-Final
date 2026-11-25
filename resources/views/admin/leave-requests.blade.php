@@ -7,91 +7,161 @@
 @include('partials.navbar-admin', ['activePage' => 'leave'])
 
 <style>
-    body {
-        background: #F6F8F7;
-    }
-
-    .leave-management {
-        max-width: 1100px;
-        margin: 35px auto;
-        padding: 0 24px 40px;
-        font-family: 'Inter', sans-serif;
-        color: #172E29;
-    }
-
-    .leave-management *,
-    .leave-management *::before,
-    .leave-management *::after {
+    * {
         box-sizing: border-box;
     }
 
+    body {
+        margin: 0;
+        background: #F6F8F7;
+        font-family: 'Inter', Arial, sans-serif;
+        color: #172E29;
+    }
+
+    .leave-management {
+        width: 100%;
+        min-width: 0;
+        margin: 0;
+        padding: clamp(22px, 3vw, 44px) clamp(18px, 3vw, 55px);
+    }
+
     .leave-header {
-        margin-bottom: 28px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 30px;
     }
 
     .section-label {
         color: #176454;
         font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
+        font-weight: 700;
+        letter-spacing: .8px;
+        margin-bottom: 7px;
     }
 
     .leave-header h1 {
-        font-size: 28px;
-        font-weight: 600;
-        margin: 0 0 8px;
+        font-size: clamp(27px, 2.3vw, 36px);
+        font-weight: 650;
+        line-height: 1.2;
+        margin: 0;
     }
 
     .leave-header p {
         color: #687B74;
-        font-size: 13px;
-        margin: 0;
+        font-size: 14px;
+        margin: 8px 0 0;
     }
+
+    .header-caption {
+        padding: 10px 14px;
+        border: 1px solid #E3EAE7;
+        border-radius: 10px;
+        background: #FFFFFF;
+        color: #687B74;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    /* Feedback messages */
+
+    .feedback-message {
+        background: #FFFFFF;
+        border: 1px solid #E3EAE7;
+        border-left: 4px solid #176454;
+        border-radius: 11px;
+        padding: 14px 17px;
+        margin-bottom: 18px;
+        color: #176454;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .feedback-message.error {
+        border-left-color: #A13C32;
+        color: #A13C32;
+    }
+
+    /* Overview cards */
 
     .leave-overview {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-        margin-bottom: 32px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 34px;
     }
 
     .overview-card {
+        min-height: 118px;
         background: #FFFFFF;
-        border-radius: 12px;
-        padding: 12px;
-        min-height: 72px;
+        border: 1px solid #E3EAE7;
+        border-radius: 16px;
+        padding: 20px 22px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
     .overview-card.pending {
         background: #176454;
+        border-color: #176454;
+    }
+
+    .overview-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
     }
 
     .overview-label {
-        display: block;
         color: #687B74;
-        font-size: 11px;
+        font-size: 13px;
         font-weight: 500;
-        margin-bottom: 4px;
     }
 
     .pending .overview-label {
         color: #D4E7DF;
     }
 
+    .overview-icon {
+        width: 33px;
+        height: 33px;
+        border-radius: 10px;
+        background: #E7F0EB;
+        color: #176454;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    .pending .overview-icon {
+        background: rgba(255, 255, 255, .16);
+        color: #FFFFFF;
+    }
+
     .overview-number {
         display: block;
         color: #172E29;
-        font-size: 22px;
-        font-weight: 600;
+        font-size: 34px;
+        font-weight: 650;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
     }
 
     .pending .overview-number {
         color: #FFFFFF;
     }
 
+    /* Sections */
+
     .leave-section {
         margin-bottom: 32px;
+        min-width: 0;
     }
 
     .section-heading {
@@ -99,30 +169,30 @@
         justify-content: space-between;
         align-items: center;
         gap: 12px;
-        margin-bottom: 14px;
+        margin-bottom: 15px;
     }
 
     .section-heading-left {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
         min-width: 0;
     }
 
     .section-heading h2 {
-        font-size: 18px;
-        font-weight: 600;
+        font-size: 19px;
+        font-weight: 650;
         line-height: 1.25;
         margin: 0;
     }
 
     .section-count {
         color: #176454;
+        background: #E7F0EB;
         font-size: 12px;
-        font-weight: 500;
-        line-height: 1.25;
-        margin: 0;
-        padding: 0;
+        font-weight: 600;
+        border-radius: 20px;
+        padding: 6px 10px;
         white-space: nowrap;
         flex-shrink: 0;
     }
@@ -131,26 +201,26 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 24px;
-        height: 24px;
+        width: 29px;
+        height: 29px;
         padding: 0;
-        border: none;
-        background: transparent;
-        color: #172E29;
+        border: 1px solid #E3EAE7;
+        background: #FFFFFF;
+        color: #176454;
         cursor: pointer;
-        border-radius: 6px;
+        border-radius: 9px;
         flex-shrink: 0;
     }
 
     .collapse-toggle:hover {
-        background: rgba(23, 100, 84, 0.08);
+        background: #E7F0EB;
     }
 
     .collapse-arrow {
         display: inline-block;
-        font-size: 12px;
+        font-size: 11px;
         line-height: 1;
-        transition: transform 0.2s ease;
+        transition: transform .2s ease;
     }
 
     .collapse-toggle[aria-expanded="false"] .collapse-arrow {
@@ -162,39 +232,52 @@
         display: none;
     }
 
+    /* Request cards */
+
+    .pending-requests-body,
+    .request-history-body {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
     .leave-card {
+        min-width: 0;
         background: #FFFFFF;
-        border-radius: 12px;
-        padding: 14px;
-        margin-bottom: 12px;
-        box-shadow: 0 2px 8px rgba(23, 46, 41, 0.03);
+        border: 1px solid #E3EAE7;
+        border-radius: 16px;
+        padding: 21px;
+        box-shadow: 0 3px 12px rgba(23, 46, 41, .025);
     }
 
     .leave-card-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 10px;
+        gap: 12px;
     }
 
     .employee-name {
         font-size: 14px;
-        font-weight: 600;
-        margin: 0 0 4px;
+        font-weight: 650;
+        margin: 0 0 5px;
+        color: #172E29;
     }
 
     .employee-department {
         color: #687B74;
         font-size: 11px;
+        line-height: 1.5;
     }
 
     .status {
         display: inline-block;
-        padding: 5px 10px;
+        padding: 6px 11px;
         border-radius: 20px;
         font-size: 10px;
-        font-weight: 500;
+        font-weight: 650;
         white-space: nowrap;
+        flex-shrink: 0;
     }
 
     .status.pending {
@@ -215,41 +298,55 @@
     }
 
     .leave-details {
-        margin-top: 16px;
+        margin-top: 19px;
+        padding-top: 15px;
+        border-top: 1px solid #E8EEEB;
     }
 
     .leave-dates {
         font-size: 12px;
-        font-weight: 500;
+        font-weight: 650;
+        line-height: 1.5;
+        color: #172E29;
         margin-bottom: 7px;
     }
 
     .leave-reason {
         color: #687B74;
-        font-size: 11px;
-        line-height: 1.5;
+        font-size: 12px;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
     }
+
+    /* Action buttons */
 
     .leave-actions {
         display: flex;
         gap: 10px;
-        margin-top: 16px;
+        margin-top: 19px;
+    }
+
+    .leave-actions form {
+        flex: 1;
+        min-width: 0;
+        display: flex;
     }
 
     .leave-button {
-        flex: 1;
-        height: 34px;
-        border-radius: 9px;
+        width: 100%;
+        min-height: 40px;
+        border-radius: 10px;
         font-family: inherit;
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 650;
         cursor: pointer;
+        transition: background .2s ease, border-color .2s ease;
     }
 
     .deny-button {
         background: #FFFFFF;
         border: 1px solid #DFE7E2;
-        color: #172E29;
+        color: #52645D;
     }
 
     .accept-button {
@@ -258,46 +355,190 @@
         color: #FFFFFF;
     }
 
+    .deny-button:hover {
+        background: #F9E9E7;
+        border-color: #E8C8C4;
+        color: #A13C32;
+    }
+
+    .accept-button:hover {
+        background: #124F42;
+        border-color: #124F42;
+    }
+
+    /* Request history */
+
     .history-card {
-        min-height: 114px;
+        min-height: 145px;
     }
 
     .history-details {
-        margin-top: 12px;
+        margin-top: 17px;
+        padding-top: 14px;
+        border-top: 1px solid #E8EEEB;
     }
 
     .reviewed-by {
         color: #687B74;
-        font-size: 10px;
-        margin-top: 7px;
+        font-size: 11px;
+        line-height: 1.6;
+        margin-top: 9px;
+        overflow-wrap: anywhere;
     }
 
     .history-footer {
         color: #687B74;
         font-size: 11px;
         margin-top: 16px;
+        padding-top: 13px;
+        border-top: 1px solid #E3EAE7;
+    }
+
+    .empty-state {
+        grid-column: 1 / -1;
+        padding: 25px;
+        text-align: center;
+        color: #687B74;
+        font-size: 13px;
+        background: #FFFFFF;
+        border: 1px solid #E3EAE7;
+        border-radius: 14px;
+    }
+
+    /* Responsive layout */
+
+    @media (min-width: 1500px) {
+        .pending-requests-body,
+        .request-history-body {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .leave-card {
+            padding: 24px;
+        }
+    }
+
+    @media (max-width: 900px) {
+        .pending-requests-body,
+        .request-history-body {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .header-caption {
+            display: none;
+        }
     }
 
     @media (max-width: 600px) {
         .leave-management {
-            margin-top: 24px;
-            padding: 0 16px 30px;
+            padding: 22px 17px 30px;
+        }
+
+        .leave-header {
+            margin-bottom: 24px;
         }
 
         .leave-header h1 {
-            font-size: 25px;
+            font-size: 27px;
+        }
+
+        .leave-header p {
+            font-size: 12px;
         }
 
         .leave-overview {
-            gap: 8px;
+            gap: 9px;
+            margin-bottom: 28px;
+        }
+
+        .overview-card {
+            min-height: 94px;
+            padding: 12px;
+            border-radius: 13px;
+        }
+
+        .overview-label {
+            font-size: 10px;
+        }
+
+        .overview-icon {
+            display: none;
+        }
+
+        .overview-number {
+            font-size: 27px;
+        }
+
+        .section-heading h2 {
+            font-size: 16px;
+        }
+
+        .section-count {
+            font-size: 10px;
+            padding: 5px 8px;
+        }
+
+        .pending-requests-body,
+        .request-history-body {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 12px;
+        }
+
+        .leave-card {
+            padding: 16px;
+            border-radius: 14px;
+        }
+
+        .employee-name {
+            font-size: 13px;
+        }
+
+        .employee-department {
+            font-size: 10px;
+        }
+
+        .leave-dates {
+            font-size: 11px;
+        }
+
+        .leave-reason {
+            font-size: 11px;
+        }
+
+        .leave-button {
+            min-height: 38px;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .leave-management {
+            padding-left: 13px;
+            padding-right: 13px;
         }
 
         .overview-card {
             padding: 10px;
         }
 
+        .overview-label {
+            font-size: 9px;
+        }
+
+        .overview-number {
+            font-size: 24px;
+        }
+
+        .section-heading {
+            gap: 6px;
+        }
+
         .section-heading h2 {
-            font-size: 16px;
+            font-size: 15px;
+        }
+
+        .section-count {
+            font-size: 9px;
         }
     }
 </style>
@@ -309,53 +550,71 @@
     $reviewedRequests = $leaveRequests->filter(fn ($r) => strtolower($r->status) !== 'pending');
 @endphp
 
-<div class="leave-management">
+<main class="leave-management">
 
     @if (session('success'))
-        <div class="leave-card" style="border-left: 4px solid #176454; margin-bottom: 16px;">
-            <div class="leave-reason" style="color: #176454; font-weight: 500;">
-                {{ session('success') }}
-            </div>
+        <div class="feedback-message">
+            {{ session('success') }}
         </div>
     @endif
 
     @if ($errors->any())
-        <div class="leave-card" style="border-left: 4px solid #A13C32; margin-bottom: 16px;">
-            <div class="leave-reason" style="color: #A13C32; font-weight: 500;">
-                {{ $errors->first() }}
-            </div>
+        <div class="feedback-message error">
+            {{ $errors->first() }}
         </div>
     @endif
 
+    <!-- Page heading -->
+
+    <header class="leave-header">
+        <div>
+            <div class="section-label">TEAM TIME OFF</div>
+
+            <h1>Leave Management</h1>
+
+            <p>Review requests and manage your team's time off.</p>
+        </div>
+
+        <div class="header-caption">
+            Leave administration
+        </div>
+    </header>
+
     <!-- Leave Overview -->
-    <div class="leave-header">
-        <div class="section-label">TEAM TIME OFF</div>
 
-        <h1>Leave Management</h1>
-
-        <p>Review requests and manage your team's time off.</p>
-    </div>
-
-    <div class="leave-overview">
+    <section class="leave-overview">
 
         <div class="overview-card pending">
-            <span class="overview-label">Pending</span>
+            <div class="overview-top">
+                <span class="overview-label">Pending</span>
+                <span class="overview-icon">◷</span>
+            </div>
+
             <span class="overview-number">{{ $pendingRequests->count() }}</span>
         </div>
 
         <div class="overview-card">
-            <span class="overview-label">Accepted</span>
+            <div class="overview-top">
+                <span class="overview-label">Accepted</span>
+                <span class="overview-icon">✓</span>
+            </div>
+
             <span class="overview-number">{{ $approvedRequests->count() }}</span>
         </div>
 
         <div class="overview-card">
-            <span class="overview-label">Denied</span>
+            <div class="overview-top">
+                <span class="overview-label">Denied</span>
+                <span class="overview-icon">×</span>
+            </div>
+
             <span class="overview-number">{{ $rejectedRequests->count() }}</span>
         </div>
 
-    </div>
+    </section>
 
     <!-- Pending Requests -->
+
     <section class="leave-section">
 
         <div class="section-heading">
@@ -370,25 +629,36 @@
                 >
                     <span class="collapse-arrow" aria-hidden="true">&#9660;</span>
                 </button>
+
                 <h2>Pending Requests</h2>
             </div>
+
             <span class="section-count">{{ $pendingRequests->count() }} incoming</span>
         </div>
 
         <div class="pending-requests-body" id="pending-requests-body">
+
             @forelse ($pendingRequests as $leaveRequest)
+
                 @php
                     $employee = $leaveRequest->employee;
                     $user = $employee?->user;
+
                     $employeeName = $user
                         ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
                         : 'Unknown Employee';
+
                     $employeeName = $employeeName !== '' ? $employeeName : 'Unknown Employee';
+
                     $departmentName = $employee?->department?->department_name ?? 'General';
+
                     $start = $leaveRequest->start_date;
                     $end = $leaveRequest->end_date;
+
                     $days = (int) $start->diffInDays($end) + 1;
+
                     $statusLower = strtolower($leaveRequest->status);
+
                     $statusBadgeClass = match ($statusLower) {
                         'approved', 'accepted' => 'approved',
                         'rejected', 'denied'   => 'rejected',
@@ -396,20 +666,24 @@
                     };
                 @endphp
 
-                <div class="leave-card" data-request-id="{{ $leaveRequest->request_id }}">
+                <article class="leave-card" data-request-id="{{ $leaveRequest->request_id }}">
 
                     <div class="leave-card-header">
                         <div>
                             <h3 class="employee-name">{{ $employeeName }}</h3>
+
                             <div class="employee-department">
                                 {{ $departmentName }}
+
                                 @if (!empty($employee?->employee_id))
                                     · EMP-{{ str_pad((string) $employee->employee_id, 3, '0', STR_PAD_LEFT) }}
                                 @endif
                             </div>
                         </div>
 
-                        <span class="status {{ $statusBadgeClass }}">{{ ucfirst($leaveRequest->status) }}</span>
+                        <span class="status {{ $statusBadgeClass }}">
+                            {{ ucfirst($leaveRequest->status) }}
+                        </span>
                     </div>
 
                     <div class="leave-details">
@@ -421,7 +695,9 @@
                             @else
                                 {{ $start->format('M j, Y') }}–{{ $end->format('M j, Y') }}
                             @endif
-                            · {{ $leaveRequest->leave_type }} · {{ $days }} {{ \Illuminate\Support\Str::plural('day', $days) }}
+
+                            · {{ $leaveRequest->leave_type }} · {{ $days }}
+                            {{ \Illuminate\Support\Str::plural('day', $days) }}
                         </div>
 
                         <div class="leave-reason">
@@ -430,42 +706,53 @@
                     </div>
 
                     <div class="leave-actions">
-                        <form method="POST"
-                              action="{{ route('admin.leave-requests.update-status', $leaveRequest->request_id) }}"
-                              style="flex: 1; display: flex;">
+
+                        <form
+                            method="POST"
+                            action="{{ route('admin.leave-requests.update-status', $leaveRequest->request_id) }}"
+                        >
                             @csrf
                             @method('PATCH')
+
                             <input type="hidden" name="status" value="Rejected">
+
                             <button type="submit" class="leave-button deny-button">
                                 Deny
                             </button>
                         </form>
 
-                        <form method="POST"
-                              action="{{ route('admin.leave-requests.update-status', $leaveRequest->request_id) }}"
-                              style="flex: 1; display: flex;">
+                        <form
+                            method="POST"
+                            action="{{ route('admin.leave-requests.update-status', $leaveRequest->request_id) }}"
+                        >
                             @csrf
                             @method('PATCH')
+
                             <input type="hidden" name="status" value="Approved">
+
                             <button type="submit" class="leave-button accept-button">
                                 Accept
                             </button>
                         </form>
+
                     </div>
 
-                </div>
+                </article>
+
             @empty
-                <div class="leave-card">
-                    <div class="leave-details">
-                        <div class="leave-reason">No pending leave requests.</div>
-                    </div>
+
+                <div class="empty-state">
+                    No pending leave requests.
                 </div>
+
             @endforelse
+
         </div>
 
     </section>
 
     <!-- Request History -->
+
     <section class="leave-section">
 
         <div class="section-heading">
@@ -480,50 +767,67 @@
                 >
                     <span class="collapse-arrow" aria-hidden="true">&#9660;</span>
                 </button>
+
                 <h2>Request History</h2>
             </div>
+
             <span class="section-count">{{ $reviewedRequests->count() }} reviewed</span>
         </div>
 
         <div class="request-history-body is-collapsed" id="request-history-body">
+
             @forelse ($reviewedRequests as $leaveRequest)
+
                 @php
                     $employee = $leaveRequest->employee;
                     $user = $employee?->user;
+
                     $employeeName = $user
                         ? trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''))
                         : 'Unknown Employee';
+
                     $employeeName = $employeeName !== '' ? $employeeName : 'Unknown Employee';
+
                     $departmentName = $employee?->department?->department_name ?? 'General';
+
                     $start = $leaveRequest->start_date;
                     $end = $leaveRequest->end_date;
+
                     $days = (int) $start->diffInDays($end) + 1;
+
                     $statusLower = strtolower($leaveRequest->status);
+
                     $statusBadgeClass = match ($statusLower) {
                         'approved', 'accepted' => 'approved',
                         'rejected', 'denied'   => 'rejected',
                         default                => 'pending',
                     };
+
                     $reviewerUser = $leaveRequest->reviewer?->user;
+
                     $reviewerName = $reviewerUser
                         ? trim(($reviewerUser->first_name ?? '') . ' ' . ($reviewerUser->last_name ?? ''))
                         : null;
                 @endphp
 
-                <div class="leave-card history-card" data-request-id="{{ $leaveRequest->request_id }}">
+                <article class="leave-card history-card" data-request-id="{{ $leaveRequest->request_id }}">
 
                     <div class="leave-card-header">
                         <div>
                             <h3 class="employee-name">{{ $employeeName }}</h3>
+
                             <div class="employee-department">
                                 {{ $departmentName }}
+
                                 @if (!empty($employee?->employee_id))
                                     · EMP-{{ str_pad((string) $employee->employee_id, 3, '0', STR_PAD_LEFT) }}
                                 @endif
                             </div>
                         </div>
 
-                        <span class="status {{ $statusBadgeClass }}">{{ ucfirst($leaveRequest->status) }}</span>
+                        <span class="status {{ $statusBadgeClass }}">
+                            {{ ucfirst($leaveRequest->status) }}
+                        </span>
                     </div>
 
                     <div class="history-details">
@@ -535,41 +839,53 @@
                             @else
                                 {{ $start->format('M j, Y') }}–{{ $end->format('M j, Y') }}
                             @endif
-                            · {{ $leaveRequest->leave_type }} · {{ $days }} {{ \Illuminate\Support\Str::plural('day', $days) }}
+
+                            · {{ $leaveRequest->leave_type }} · {{ $days }}
+                            {{ \Illuminate\Support\Str::plural('day', $days) }}
                         </div>
 
                         <div class="reviewed-by">
                             @if (!empty($leaveRequest->reviewed_by))
-                                {{ ucfirst($statusLower) }} by {{ $reviewerName ?: ('Admin #' . $leaveRequest->reviewed_by) }}
+                                {{ ucfirst($statusLower) }} by
+                                {{ $reviewerName ?: ('Admin #' . $leaveRequest->reviewed_by) }}
                             @elseif (!empty($leaveRequest->reason))
                                 Reason: {{ $leaveRequest->reason }}
                             @endif
                         </div>
                     </div>
 
-                </div>
+                </article>
+
             @empty
-                <div class="leave-card history-card">
-                    <div class="history-details">
-                        <div class="reviewed-by">No reviewed requests yet.</div>
-                    </div>
+
+                <div class="empty-state">
+                    No reviewed requests yet.
                 </div>
+
             @endforelse
+
         </div>
 
         <div class="history-footer">
-            All {{ $leaveRequests->count() }} {{ \Illuminate\Support\Str::plural('request', $leaveRequests->count()) }} shown
+            All {{ $leaveRequests->count() }}
+            {{ \Illuminate\Support\Str::plural('request', $leaveRequests->count()) }} shown
         </div>
 
     </section>
 
-</div>
+</main>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const toggles = [
-            { btnId: 'toggle-pending-requests', bodyId: 'pending-requests-body' },
-            { btnId: 'toggle-request-history', bodyId: 'request-history-body' },
+            {
+                btnId: 'toggle-pending-requests',
+                bodyId: 'pending-requests-body'
+            },
+            {
+                btnId: 'toggle-request-history',
+                bodyId: 'request-history-body'
+            },
         ];
 
         toggles.forEach(function ({ btnId, bodyId }) {
@@ -580,7 +896,9 @@
 
             toggleBtn.addEventListener('click', function () {
                 const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+
                 toggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+
                 bodyEl.classList.toggle('is-collapsed', isExpanded);
             });
         });
