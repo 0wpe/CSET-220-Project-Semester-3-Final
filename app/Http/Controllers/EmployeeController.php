@@ -410,7 +410,10 @@ class EmployeeController extends Controller
         $attendance = null;
 
         if ($assignment) {
-            $attendance = Attendance::where('assignment_id', $assignment->assignment_id)
+            $attendance = Attendance::where(
+                'assignment_id',
+                $assignment->assignment_id
+            )
                 ->where('employee_id', $employee->employee_id)
                 ->first();
         }
@@ -446,7 +449,10 @@ class EmployeeController extends Controller
                 ->with('error', 'You do not have a published shift assigned for today.');
         }
 
-        $existingAttendance = Attendance::where('assignment_id', $assignment->assignment_id)
+        $existingAttendance = Attendance::where(
+            'assignment_id',
+            $assignment->assignment_id
+        )
             ->where('employee_id', $employee->employee_id)
             ->first();
 
@@ -561,7 +567,10 @@ class EmployeeController extends Controller
                 ->with('error', 'You do not have a published shift assigned for today.');
         }
 
-        $attendance = Attendance::where('assignment_id', $assignment->assignment_id)
+        $attendance = Attendance::where(
+            'assignment_id',
+            $assignment->assignment_id
+        )
             ->where('employee_id', $employee->employee_id)
             ->first();
 
@@ -684,5 +693,48 @@ class EmployeeController extends Controller
         $employee->delete();
 
         return redirect()->back();
+    }
+
+    public function resumeWork()
+    {
+        $employee = Employee::where('user_id', Auth::id())
+            ->firstOrFail();
+
+        $attendance = Attendance::where(
+            'employee_id',
+            $employee->employee_id
+        )
+            ->whereDate('clock_in', now()->toDateString())
+            ->whereNull('clock_out')
+            ->first();
+
+        if (!$attendance) {
+            return redirect()->back()
+                ->with('error', 'You are not currently clocked in.');
+        }
+
+        if (!$attendance->break_started_at) {
+            return redirect()->back()
+                ->with('error', 'You are not currently on break.');
+        }
+
+        $breakStart = Carbon::parse($attendance->break_started_at);
+
+        $breakSeconds = max(
+            0,
+            now()->timestamp - $breakStart->timestamp
+        );
+
+        $totalBreakSeconds = (int) $attendance->break_seconds
+            + $breakSeconds;
+
+        $attendance->update([
+            'break_seconds' => $totalBreakSeconds,
+            'break_minutes' => intdiv($totalBreakSeconds, 60),
+            'break_started_at' => null,
+        ]);
+
+        return redirect()->back()
+            ->with('success', 'Your break has ended. Welcome back!');
     }
 }

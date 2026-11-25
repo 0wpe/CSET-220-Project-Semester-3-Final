@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Attendance extends Model
 {
-    protected $table = 'Attendance';
+    protected $table = 'attendance';
     protected $primaryKey = 'attendance_id';
     public $timestamps = false;
 
